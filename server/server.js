@@ -1848,27 +1848,17 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const username = String(req.body?.username || '').trim();
     const email = String(req.body?.email || '').trim().toLowerCase();
-    const phone = normalizePhone(req.body?.phone || '');
     const password = String(req.body?.password || '');
     const referredByRaw = String(req.body?.referred_by || '').trim();
-    const verificationChannel = String(req.body?.verification_channel || '').trim().toLowerCase();
-    const verificationCode = String(req.body?.verification_code || '').trim();
-    const verificationId = String(req.body?.verification_id || '').trim();
-    if (!username || !password || !verificationChannel || !verificationCode || !verificationId) {
-      return res.status(400).json({ message: "Username, password, and verification details are required" });
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Username, email, and password are required" });
     }
     const passwordStrengthError = validatePasswordStrength(password);
     if (passwordStrengthError) {
       return res.status(400).json({ message: passwordStrengthError });
     }
-    if (verificationChannel !== 'email' && verificationChannel !== 'phone') {
-      return res.status(400).json({ message: 'Choose email or phone verification.' });
-    }
-    if (verificationChannel === 'email' && !isValidEmail(email)) {
+    if (!isValidEmail(email)) {
       return res.status(400).json({ message: 'Enter a valid email address.' });
-    }
-    if (verificationChannel === 'phone' && !isValidPhone(phone)) {
-      return res.status(400).json({ message: 'Enter a valid phone number with country code.' });
     }
 
     const usernameRegex = toUsernameRegex(username);
@@ -1876,32 +1866,14 @@ app.post('/api/auth/register', async (req, res) => {
     const existingUser = await User.findOne({
       $or: [
         { username: usernameRegex },
-        ...(emailRegex ? [{ email: emailRegex }] : []),
-        ...(phone ? [{ phone }] : [])
+        ...(emailRegex ? [{ email: emailRegex }] : [])
       ]
     });
     if (existingUser) {
       if (email && String(existingUser.email || '').toLowerCase() === email.toLowerCase()) {
         return res.status(409).json({ message: "Email already registered" });
       }
-      if (phone && String(existingUser.phone || '') === phone) {
-        return res.status(409).json({ message: "Phone number already registered" });
-      }
       return res.status(409).json({ message: "Username already taken" });
-    }
-
-    const verified = await consumeVerificationCode({
-      verificationId,
-      code: verificationCode,
-      purpose: 'register',
-      channel: verificationChannel,
-      destination: verificationChannel === 'phone' ? phone : email
-    });
-    if (verified === false) {
-      return res.status(401).json({ message: 'Invalid verification code.' });
-    }
-    if (!verified) {
-      return res.status(401).json({ message: 'Verification code expired or not found.' });
     }
 
     let referredBy = '';
@@ -1915,11 +1887,11 @@ app.post('/api/auth/register', async (req, res) => {
     const newUser = new User({
       username,
       email,
-      phone,
+      phone: '',
       password: hashPassword(password),
-      auth_method: verificationChannel,
-      email_verified_at: verificationChannel === 'email' ? new Date() : null,
-      phone_verified_at: verificationChannel === 'phone' ? new Date() : null,
+      auth_method: 'email',
+      email_verified_at: new Date(),
+      phone_verified_at: null,
       trusted_devices: [],
       role: 'user',
       wtk_balance: INSTALL_BONUS_WTK,
@@ -1951,7 +1923,7 @@ app.post('/api/auth/register', async (req, res) => {
     console.log(`👤 New user saved: ${username}`);
     res.status(201).json({
       message: "User saved successfully!",
-      auth_method: verificationChannel,
+      auth_method: 'email',
       onboarding_wtk_awarded: INSTALL_BONUS_WTK,
       next_profile_bonus_wtk: PROFILE_COMPLETION_BONUS_WTK,
       referred_by: referredBy || '',
