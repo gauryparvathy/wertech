@@ -2,6 +2,9 @@ const API_BASE = String(process.env.REACT_APP_API_BASE_URL || '').replace(/\/+$/
 const API_PREFIX = API_BASE ? `${API_BASE}/api/` : '/api/';
 const FETCH_TIMEOUT_MS = Number(process.env.REACT_APP_FETCH_TIMEOUT_MS || 12000);
 const FETCH_RETRY_COUNT = Math.max(0, Number(process.env.REACT_APP_FETCH_RETRY_COUNT || 1));
+const ORIGINAL_FETCH = typeof window !== 'undefined' && typeof window.fetch === 'function'
+  ? window.fetch.bind(window)
+  : null;
 
 let nativeFetch = null;
 let refreshInFlight = null;
@@ -9,7 +12,7 @@ let isPatched = false;
 
 function ensureNativeFetch() {
   if (!nativeFetch) {
-    nativeFetch = window.fetch.bind(window);
+    nativeFetch = ORIGINAL_FETCH || window.fetch.bind(window);
   }
   return nativeFetch;
 }
