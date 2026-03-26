@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Mail, Lock, ArrowRight, AlertCircle, Palette, KeyRound, Smartphone } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
-import { resolveApiUrl, setAuthSession } from '../utils/authClient';
+import { fetchPublicApi, resolveApiUrl, setAuthSession } from '../utils/authClient';
 import { getApiMessage, toastError, toastSuccess, validateLoginForm, validatePasswordValue } from '../utils/feedback';
 
 const initialRecoveryForm = {
@@ -154,7 +154,7 @@ export default function Login() {
     }
     try {
       setSubmitting(true);
-      const response = await fetch(resolveApiUrl('/api/auth/forgot-password/request'), {
+      const response = await fetchPublicApi(resolveApiUrl('/api/auth/forgot-password/request'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, User, Mail, Lock, ArrowRight, Gift, Smartphone, KeyRound } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
 import { getApiMessage, toastError, toastSuccess, validateRegistrationForm } from '../utils/feedback';
-import { resolveApiUrl } from '../utils/authClient';
+import { fetchPublicApi, resolveApiUrl } from '../utils/authClient';
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,}$/;
 
@@ -96,7 +96,7 @@ export default function Register() {
     }
     setSendingCode(true);
     try {
-      const response = await fetch(resolveApiUrl('/api/auth/request-verification-code'), {
+      const response = await fetchPublicApi(resolveApiUrl('/api/auth/request-verification-code'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

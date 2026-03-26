@@ -58,6 +58,12 @@ export function resolveApiUrl(path) {
   return API_BASE ? `${API_BASE}${cleanPath}` : cleanPath;
 }
 
+export async function fetchPublicApi(input, init = {}) {
+  const fetchImpl = ensureNativeFetch();
+  const requestInput = normalizeApiInput(input);
+  return fetchWithPolicy(fetchImpl, requestInput, init);
+}
+
 function normalizeMethod(method) {
   return String(method || 'GET').toUpperCase();
 }
