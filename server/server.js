@@ -2323,7 +2323,8 @@ app.use('/api', async (req, res, next) => {
     '/health',
     '/payments/razorpay/webhook'
   ]);
-  if (publicPaths.has(req.path)) {
+  const normalizedPublicPath = String(req.path || '').replace(/\/+$/, '') || '/';
+  if (publicPaths.has(normalizedPublicPath)) {
     return next();
   }
 
