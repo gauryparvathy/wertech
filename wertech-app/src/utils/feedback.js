@@ -9,30 +9,18 @@ export function getApiMessage(payload, fallback = 'Something went wrong. Please 
   return fallback;
 }
 
-export function validateRegistrationForm({ username, email, phone, password, verificationChannel, verificationCode }) {
+export function validateRegistrationForm({ username, email, password }) {
   const cleanUsername = String(username || '').trim();
   const cleanEmail = String(email || '').trim();
-  const cleanPhone = String(phone || '').trim();
   const cleanPassword = String(password || '');
-  const cleanChannel = String(verificationChannel || '').trim();
-  const cleanCode = String(verificationCode || '').trim();
 
   if (!cleanUsername) return 'Username is required.';
   if (cleanUsername.length < 3) return 'Username must be at least 3 characters.';
-  if (cleanChannel !== 'email' && cleanChannel !== 'phone') return 'Choose email or phone verification.';
-  if (cleanChannel === 'email') {
-    if (!cleanEmail) return 'Email is required.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return 'Enter a valid email address.';
-  }
-  if (cleanChannel === 'phone') {
-    if (!cleanPhone) return 'Phone number is required.';
-    const normalizedPhone = cleanPhone.replace(/[^\d+]/g, '');
-    if (!/^\+?[1-9]\d{7,14}$/.test(normalizedPhone)) return 'Enter a valid phone number.';
-  }
+  if (!cleanEmail) return 'Email is required.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return 'Enter a valid email address.';
   if (!cleanPassword) return 'Password is required.';
   if (cleanPassword.length < 8) return 'Password must be at least 8 characters.';
   if (!/[A-Za-z]/.test(cleanPassword) || !/\d/.test(cleanPassword)) return 'Password must include at least one letter and one number.';
-  if (!cleanCode) return 'Verification code is required.';
   return '';
 }
 

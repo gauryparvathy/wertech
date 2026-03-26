@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShieldCheck, User, Mail, Lock, ArrowRight, Gift, Smartphone, KeyRound } from 'lucide-react';
+import { ShieldCheck, User, Mail, Lock, ArrowRight, Gift } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
 import { getApiMessage, toastError, toastSuccess, validateRegistrationForm } from '../utils/feedback';
-import { fetchPublicApi, resolveApiUrl } from '../utils/authClient';
+import { resolveApiUrl } from '../utils/authClient';
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,}$/;
 
@@ -12,16 +12,11 @@ export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
-  const [verificationStatus, setVerificationStatus] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    phone: '',
-    password: '',
-    verificationChannel: 'email',
-    verificationCode: ''
+    password: ''
   });
-  const [verificationId, setVerificationId] = useState('');
   const [usernameState, setUsernameState] = useState({
     checking: false,
     available: true,
@@ -29,7 +24,6 @@ export default function Register() {
     hardFailure: false
   });
   const [submitting, setSubmitting] = useState(false);
-  const [sendingCode, setSendingCode] = useState(false);
   const [referrer, setReferrer] = useState(() => localStorage.getItem('wertech_referrer') || '');
 
   useEffect(() => {
@@ -84,49 +78,6 @@ export default function Register() {
     };
   }, [formData.username]);
 
-  const channelLabel = formData.verificationChannel === 'phone' ? 'Phone Number' : 'Email Address';
-
-  const handleRequestCode = async () => {
-    setError('');
-    setVerificationStatus('');
-    const destinationValue = formData.verificationChannel === 'phone' ? formData.phone : formData.email;
-    if (!destinationValue.trim()) {
-      setError(`Enter your ${formData.verificationChannel === 'phone' ? 'phone number' : 'email'} first.`);
-      return;
-    }
-    setSendingCode(true);
-    try {
-      const response = await fetchPublicApi(resolveApiUrl('/api/auth/request-verification-code'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          channel: formData.verificationChannel,
-          email: formData.email,
-          phone: formData.phone
-        })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const message = getApiMessage(data, 'Could not send verification code.');
-        setError(message);
-        toastError(message);
-        return;
-      }
-      setVerificationId(String(data.verification_id || ''));
-      const message = data.dev_code
-        ? `Verification code sent. Dev code: ${data.dev_code}`
-        : `Verification code sent to your ${formData.verificationChannel}.`;
-      setVerificationStatus(message);
-      toastSuccess(message);
-    } catch (err) {
-      const message = 'Could not send verification code.';
-      setError(message);
-      toastError(message);
-    } finally {
-      setSendingCode(false);
-    }
-  };
-
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
@@ -134,10 +85,6 @@ export default function Register() {
     const validationError = validateRegistrationForm(formData);
     if (validationError) {
       setError(validationError);
-      return;
-    }
-    if (!verificationId) {
-      setError('Request a verification code first.');
       return;
     }
     if (!usernameState.available) {
@@ -153,12 +100,8 @@ export default function Register() {
         body: JSON.stringify({
           username: formData.username,
           email: formData.email,
-          phone: formData.phone,
           password: formData.password,
-          referred_by: referrer,
-          verification_channel: formData.verificationChannel,
-          verification_code: formData.verificationCode,
-          verification_id: verificationId
+          referred_by: referrer
         })
       });
 
@@ -166,8 +109,8 @@ export default function Register() {
         const data = await response.json().catch(() => ({}));
         toastSuccess(
           data?.referred_by
-            ? 'Account created and verified. You received 500 WTK signup bonus, and your referrer was rewarded.'
-            : 'Account created and verified. You received your 500 WTK signup bonus.'
+            ? 'Account created. You received 500 WTK signup bonus, and your referrer was rewarded.'
+            : 'Account created. You received your 500 WTK signup bonus.'
         );
         navigate('/login');
       } else {
@@ -198,7 +141,7 @@ export default function Register() {
             </div>
             <h2 className="mt-8 text-4xl leading-tight font-black">Secure Account Creation.</h2>
             <p className="mt-4 text-sm font-semibold text-white/85 max-w-sm">
-              Verify with email or phone before your account goes live, and protect every sign-in with trusted-device checks.
+              Create your Wertech account with your username, email, and password.
             </p>
           </div>
         </motion.div>
@@ -209,7 +152,7 @@ export default function Register() {
               <ShieldCheck size={28} />
             </div>
             <h1 className="text-3xl font-black text-slate-900 dark:text-white">Create Account</h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Choose email or phone, verify it, then finish registration.</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium mt-2">Use your username, email, and password to finish registration.</p>
           </div>
 
           {referrer && (
@@ -220,14 +163,8 @@ export default function Register() {
           )}
 
           {error && <div className="mb-5 p-3 rounded-xl border border-rose-100 bg-rose-50 text-rose-600 font-bold text-sm">{error}</div>}
-          {verificationStatus && <div className="mb-5 p-3 rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-700 font-bold text-sm">{verificationStatus}</div>}
 
           <form onSubmit={handleRegister} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setFormData((prev) => ({ ...prev, verificationChannel: 'email', verificationCode: '' }))} className={`p-4 rounded-2xl font-black text-sm border transition-all ${formData.verificationChannel === 'email' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>Email Profile</button>
-              <button type="button" onClick={() => setFormData((prev) => ({ ...prev, verificationChannel: 'phone', verificationCode: '' }))} className={`p-4 rounded-2xl font-black text-sm border transition-all ${formData.verificationChannel === 'phone' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}`}>Phone Profile</button>
-            </div>
-
             <div className="relative">
               <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
               <input required type="text" placeholder="Username" className="w-full pl-14 pr-6 py-4 app-input" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
@@ -239,34 +176,9 @@ export default function Register() {
             )}
 
             <div className="relative">
-              {formData.verificationChannel === 'phone' ? <Smartphone className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} /> : <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />}
-              <input
-                required
-                type={formData.verificationChannel === 'phone' ? 'tel' : 'email'}
-                placeholder={channelLabel}
-                className="w-full pl-14 pr-40 py-4 app-input"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                value={formData.verificationChannel === 'phone' ? formData.phone : formData.email}
-                onChange={(e) => setFormData({ ...formData, [formData.verificationChannel === 'phone' ? 'phone' : 'email']: e.target.value })}
-              />
-              <button type="button" onClick={handleRequestCode} disabled={sendingCode} className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest disabled:opacity-60">
-                {sendingCode ? 'Sending' : 'Send Code'}
-              </button>
+              <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <input required type="email" placeholder="Email Address" className="w-full pl-14 pr-6 py-4 app-input" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
             </div>
-
-            <div className="relative">
-              <KeyRound className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-              <input required type="text" inputMode="numeric" placeholder="Verification Code" className="w-full pl-14 pr-6 py-4 app-input" value={formData.verificationCode} onChange={(e) => setFormData({ ...formData, verificationCode: e.target.value })} />
-            </div>
-
-            {formData.verificationChannel === 'email' && (
-              <div className="relative">
-                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                <input type="email" placeholder="Backup Email (optional if using phone)" className="w-full pl-14 pr-6 py-4 app-input" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-              </div>
-            )}
 
             <div className="relative">
               <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
@@ -274,7 +186,7 @@ export default function Register() {
             </div>
 
             <button type="submit" disabled={submitting || !usernameState.available} className="w-full app-btn-primary py-4 text-lg flex items-center justify-center gap-3 mt-2">
-              {submitting ? 'Creating Account...' : 'Create Verified Account'} <ArrowRight size={20} />
+              {submitting ? 'Creating Account...' : 'Create Account'} <ArrowRight size={20} />
             </button>
           </form>
 
