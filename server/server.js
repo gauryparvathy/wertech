@@ -585,10 +585,8 @@ function validateApiRequest(req, res, next) {
 
   if (method === 'POST' && path === '/auth/register') {
     requireString('body', 'username', 'username');
+    requireString('body', 'email', 'email');
     requireString('body', 'password', 'password');
-    requireString('body', 'verification_channel', 'verification_channel');
-    requireString('body', 'verification_code', 'verification_code');
-    requireString('body', 'verification_id', 'verification_id');
   }
   if (method === 'POST' && path === '/auth/login') {
     requireString('body', 'email', 'email or username');
