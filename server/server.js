@@ -1251,7 +1251,14 @@ async function createAndSendVerificationCode({ purpose, channel, destination, us
     verification_id: String(record._id),
     expires_at: record.expires_at
   };
-  if (APP_ENV !== 'production') payload.dev_code = code;
+  const providerConfigured = channel === 'email' ? EMAIL_ENABLED : SMS_ENABLED;
+  if (APP_ENV !== 'production' || !providerConfigured) {
+    payload.dev_code = code;
+    if (!providerConfigured) {
+      payload.delivery_fallback = true;
+      payload.delivery_message = `Live ${channel} sending is not configured yet. Use this code to continue right now.`;
+    }
+  }
   return payload;
 }
 
@@ -1307,9 +1314,14 @@ async function createPasswordResetLink({ username, channel, destination }) {
     reset_request_id: String(resetRecord._id),
     expires_at: resetRecord.expires_at
   };
-  if (APP_ENV !== 'production') {
+  const providerConfigured = channel === 'email' ? EMAIL_ENABLED : SMS_ENABLED;
+  if (APP_ENV !== 'production' || !providerConfigured) {
     payload.dev_reset_token = token;
     payload.dev_reset_url = resetUrl;
+    if (!providerConfigured) {
+      payload.delivery_fallback = true;
+      payload.delivery_message = `Live ${channel} recovery delivery is not configured yet. Use the fallback reset details to continue right now.`;
+    }
   }
   return payload;
 }

@@ -178,11 +178,25 @@ export default function Login() {
           verificationId: String(data.verification_id || ''),
           verificationCode: ''
         });
+        if (data?.dev_code) {
+          setRecoveryStatus(
+            data?.delivery_message
+              ? `${data.delivery_message} Code: ${data.dev_code}`
+              : `Password reset code sent. Code: ${data.dev_code}`
+          );
+        }
         setViewMode('recovery-code');
       } else if (recoveryForm.recoveryMethod === 'link') {
         updateRecoveryForm({
           resetToken: String(data?.dev_reset_token || recoveryForm.resetToken || '')
         });
+        if (data?.dev_reset_url || data?.dev_reset_token) {
+          setRecoveryStatus(
+            data?.delivery_message
+              ? `${data.delivery_message} Use the fallback reset link flow shown here.`
+              : (data?.message || 'Recovery instructions sent.')
+          );
+        }
         if (data?.dev_reset_token) {
           setViewMode('recovery-link');
         }
@@ -435,7 +449,7 @@ export default function Login() {
               <button type="submit" disabled={submitting} className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl shadow-cyan-600/20 hover:from-teal-700 hover:to-cyan-700 transition-all active:scale-[0.985] mt-2">
                 {submitting ? 'Updating...' : 'Reset Password With Code'} <ArrowRight size={20} />
               </button>
-              {challenge?.dev_code && <p className="text-xs font-bold text-emerald-600">Dev code: {challenge.dev_code}</p>}
+              {recoveryStatus.toLowerCase().includes('code:') && <p className="text-xs font-bold text-emerald-600">{recoveryStatus}</p>}
               <button type="button" onClick={() => { setViewMode('recovery-request'); updateRecoveryForm({ verificationCode: '', newPassword: '', verificationId: '' }); }} className="w-full py-3 rounded-2xl bg-slate-100 text-slate-600 font-black">Back</button>
             </form>
           )}
