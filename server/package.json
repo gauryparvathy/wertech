@@ -1,0 +1,41 @@
+{
+  "name": "wertech-server",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "lint": "node --check server.js && node --check scripts/backfill-user-records.js && node --check tests/api.integration.test.js",
+    "test": "jest --runInBand --coverage",
+    "backup:db": "powershell -ExecutionPolicy Bypass -File .\\scripts\\mongodb-backup.ps1",
+    "restore:db": "powershell -ExecutionPolicy Bypass -File .\\scripts\\mongodb-restore.ps1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "mongoose": "^8.18.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^10.1.4",
+    "supertest": "^7.1.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/scripts/"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 0.4,
+        "functions": 2,
+        "lines": 8,
+        "statements": 8
+      }
+    }
+  }
+}

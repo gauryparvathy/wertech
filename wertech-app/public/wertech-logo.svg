@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 92" role="img" aria-label="Wertech logo">
+  <defs>
+    <linearGradient id="g" x1="12" y1="8" x2="84" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563FF"/>
+      <stop offset="0.52" stop-color="#00B7FF"/>
+      <stop offset="1" stop-color="#3CF2FF"/>
+    </linearGradient>
+    <linearGradient id="t" x1="112" y1="24" x2="338" y2="24" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563FF"/>
+      <stop offset="0.52" stop-color="#00B7FF"/>
+      <stop offset="1" stop-color="#3CF2FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="76" height="76" rx="22" fill="url(#g)"/>
+  <path d="M24 29l10.2 33h7.4L45 47l3.6 15h7.4l10.2-33H59l-5.2 18.8L49.1 29h-8.8l-4.7 18.8L30.4 29H24z" fill="#fff"/>
+  <text x="108" y="60" font-family="Manrope, Segoe UI, Arial, sans-serif" font-size="46" font-weight="800" font-style="italic" letter-spacing="0.5" fill="url(#t)">WERTECH</text>
+</svg>

@@ -1,0 +1,63 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment target environment
+        required: true
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'staging')
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger staging frontend deploy hook
+        if: ${{ secrets.STAGING_FRONTEND_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsSL -X POST "${{ secrets.STAGING_FRONTEND_DEPLOY_HOOK_URL }}"
+
+      - name: Trigger staging backend deploy hook
+        if: ${{ secrets.STAGING_BACKEND_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsSL -X POST "${{ secrets.STAGING_BACKEND_DEPLOY_HOOK_URL }}"
+
+      - name: Verify staging deploy hooks configured
+        if: ${{ secrets.STAGING_FRONTEND_DEPLOY_HOOK_URL == '' && secrets.STAGING_BACKEND_DEPLOY_HOOK_URL == '' }}
+        run: |
+          echo "No staging deploy hooks configured."
+          echo "Set STAGING_FRONTEND_DEPLOY_HOOK_URL and/or STAGING_BACKEND_DEPLOY_HOOK_URL in repository secrets."
+          exit 1
+
+  deploy-production:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger production frontend deploy hook
+        if: ${{ secrets.PRODUCTION_FRONTEND_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsSL -X POST "${{ secrets.PRODUCTION_FRONTEND_DEPLOY_HOOK_URL }}"
+
+      - name: Trigger production backend deploy hook
+        if: ${{ secrets.PRODUCTION_BACKEND_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsSL -X POST "${{ secrets.PRODUCTION_BACKEND_DEPLOY_HOOK_URL }}"
+
+      - name: Verify production deploy hooks configured
+        if: ${{ secrets.PRODUCTION_FRONTEND_DEPLOY_HOOK_URL == '' && secrets.PRODUCTION_BACKEND_DEPLOY_HOOK_URL == '' }}
+        run: |
+          echo "No production deploy hooks configured."
+          echo "Set PRODUCTION_FRONTEND_DEPLOY_HOOK_URL and/or PRODUCTION_BACKEND_DEPLOY_HOOK_URL in repository secrets."
+          exit 1

@@ -1,0 +1,2 @@
+{"ts":"2026-03-25T20:00:13.293Z","level":"info","event":"mongodb_connected","env":"development","host":"ac-biab1lv-shard-00-00.amc3oeb.mongodb.net","name":"wertech"}
+{"ts":"2026-03-25T20:00:13.307Z","level":"info","event":"server_started","env":"development","port":5061}
