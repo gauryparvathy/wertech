@@ -115,6 +115,10 @@ export default function Sidebar() {
         // no-op
       }
     }
+    if (location.pathname === item.path) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     navigate(item.path);
   };
 

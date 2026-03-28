@@ -72,17 +72,21 @@ function AppLayout() {
     setShowIntro(!hasSeenIntro);
   }, [location.pathname, isAuthenticated]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [location.pathname]);
+
   const handleCloseIntro = () => {
     sessionStorage.setItem('wertech-intro-seen', 'true');
     setShowIntro(false);
   };
 
   return (
-    <div className="app-shell flex">
+    <div className="app-shell flex flex-col md:flex-row">
       <AnimatePresence>{showIntro && <AppIntro onDone={handleCloseIntro} />}</AnimatePresence>
       {!isAuthPage && <Sidebar />}
       
-      <main className="app-main flex-1">
+      <main className="app-main flex-1 min-w-0">
         <div className="app-content">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
