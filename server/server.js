@@ -853,10 +853,32 @@ app.use((req, res, next) => {
 app.use('/api', validateApiRequest);
 
 let mongoConnectionPromise = null;
+
+async function reconcileUserIndexes() {
+  const usersCollection = mongoose.connection?.db?.collection('users');
+  if (!usersCollection) return;
+
+  const indexes = await usersCollection.indexes().catch(() => []);
+  const stalePhoneIndex = indexes.find((index) => {
+    const key = index?.key || {};
+    return key.phone === 1 && index.unique === true && !index.sparse && !index.partialFilterExpression;
+  });
+
+  if (!stalePhoneIndex?.name) return;
+
+  await usersCollection.dropIndex(stalePhoneIndex.name);
+  logStructured('info', 'mongodb_index_dropped', {
+    collection: 'users',
+    index_name: stalePhoneIndex.name,
+    reason: 'stale_unique_phone_index'
+  });
+}
+
 function connectDatabase() {
   if (!mongoConnectionPromise) {
     mongoConnectionPromise = mongoose.connect(MONGODB_URI)
-      .then(() => {
+      .then(async () => {
+        await reconcileUserIndexes();
         logStructured('info', 'mongodb_connected', {
           host: mongoose.connection?.host || null,
           name: mongoose.connection?.name || null
@@ -879,7 +901,7 @@ function connectDatabase() {
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, default: '', index: true },
-  phone: { type: String, default: '', index: true },
+  phone: { type: String, default: null, index: true },
   password: { type: String, required: true }, 
   auth_method: { type: String, enum: ['email', 'phone'], default: 'email' },
   email_verified_at: { type: Date, default: null },
@@ -1885,7 +1907,7 @@ app.post('/api/auth/register', async (req, res) => {
     const newUser = new User({
       username,
       email,
-      phone: '',
+      phone: null,
       password: hashPassword(password),
       auth_method: 'email',
       email_verified_at: new Date(),
@@ -1928,6 +1950,19 @@ app.post('/api/auth/register', async (req, res) => {
       referrer_rewarded_install: referrerRewarded
     });
   } catch (err) {
+    const duplicateField = Object.keys(err?.keyPattern || {})[0] || '';
+    if (err?.code === 11000) {
+      if (duplicateField === 'email') {
+        return res.status(409).json({ message: 'Email already registered' });
+      }
+      if (duplicateField === 'username') {
+        return res.status(409).json({ message: 'Username already taken' });
+      }
+      if (duplicateField === 'phone') {
+        return res.status(500).json({ message: 'Registration is blocked by a legacy phone index on the database. Please retry after the server index fix is applied.' });
+      }
+      return res.status(409).json({ message: 'Account already exists' });
+    }
     res.status(500).json({ message: "Error saving user", error: err.message });
   }
 });
