@@ -2086,7 +2086,6 @@ app.post('/api/auth/login', async (req, res) => {
     user.refresh_token_expires_at = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
     await user.save();
     const referralCount = await getReferralCount(user.username);
-    const privateAnalytics = isOwnProfile ? await buildUserProfileAnalytics(user.username) : null;
 
     res.status(200).json({
       message: "Login successful",
@@ -2103,6 +2102,13 @@ app.post('/api/auth/login', async (req, res) => {
       ...getPremiumSummary(user, referralCount)
     });
   } catch (err) {
+    logStructured('error', 'login_failed', {
+      message: err?.message || 'Unknown login failure',
+      code: err?.code || null,
+      keyPattern: err?.keyPattern || null,
+      keyValue: err?.keyValue || null,
+      stack: err?.stack || null
+    });
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
