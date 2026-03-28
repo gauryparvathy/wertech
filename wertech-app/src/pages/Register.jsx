@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, User, Mail, Lock, ArrowRight, Gift } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
 import { getApiMessage, toastError, toastSuccess, validateRegistrationForm } from '../utils/feedback';
-import { resolveApiUrl } from '../utils/authClient';
+import { resolveApiUrl, setAuthSession } from '../utils/authClient';
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,}$/;
 
@@ -107,6 +107,27 @@ export default function Register() {
 
       if (response.ok) {
         const data = await response.json().catch(() => ({}));
+        const loginResponse = await fetch(resolveApiUrl('/api/auth/login'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.username,
+            password: formData.password
+          })
+        });
+        const loginData = await loginResponse.json().catch(() => ({}));
+
+        if (loginResponse.ok) {
+          setAuthSession(loginData);
+          toastSuccess(
+            data?.referred_by
+              ? 'Account created, referral applied, and you are now signed in.'
+              : 'Account created and you are now signed in.'
+          );
+          navigate(loginData.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+          return;
+        }
+
         toastSuccess(
           data?.referred_by
             ? 'Account created. You received 500 WTK signup bonus, and your referrer was rewarded.'
