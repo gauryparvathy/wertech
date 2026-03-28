@@ -901,7 +901,7 @@ function connectDatabase() {
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, default: '', index: true },
-  phone: { type: String, default: null, index: true },
+  phone: { type: String, default: undefined, index: true },
   password: { type: String, required: true }, 
   auth_method: { type: String, enum: ['email', 'phone'], default: 'email' },
   email_verified_at: { type: Date, default: null },
@@ -1907,7 +1907,6 @@ app.post('/api/auth/register', async (req, res) => {
     const newUser = new User({
       username,
       email,
-      phone: null,
       password: hashPassword(password),
       auth_method: 'email',
       email_verified_at: new Date(),
