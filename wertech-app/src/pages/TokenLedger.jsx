@@ -9,10 +9,14 @@ function formatNumber(n) {
   return Number(n || 0).toLocaleString();
 }
 
+function normalizeBalance(value) {
+  return Number.isFinite(Number(value)) ? Number(value) : null;
+}
+
 export default function TokenLedger() {
   const navigate = useNavigate();
   const username = localStorage.getItem('username') || '';
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,7 +54,7 @@ export default function TokenLedger() {
         const [walletData, txData] = await Promise.all([walletRes.json(), txRes.json()]);
 
         if (walletRes.ok) {
-          setBalance(Number(walletData?.wtk_balance || 0));
+          setBalance(normalizeBalance(walletData?.wtk_balance));
           if (walletData?.wallet_config) {
             setWalletConfig((prev) => ({
               ...prev,
@@ -85,7 +89,7 @@ export default function TokenLedger() {
     return subscribeUserEvents(username, {
       onEvent: (type, payload) => {
         if (type === 'wallet_update') {
-          setBalance(Number(payload?.wtk_balance || 0));
+          setBalance(normalizeBalance(payload?.wtk_balance));
           setReloadKey((prev) => prev + 1);
         }
         if (type === 'transaction_update') {
@@ -130,7 +134,7 @@ export default function TokenLedger() {
       if (!response.ok) {
         throw new Error(getApiMessage(data, 'Could not send WTK.'));
       }
-      setBalance(Number(data?.wtk_balance || 0));
+      setBalance(normalizeBalance(data?.wtk_balance));
       setPeerRecipient('');
       setPeerAmount(10);
       setLiveStatus(`Sent ${amount} WTK to ${data?.transaction?.title?.replace('WTK Sent to ', '') || 'user'}.`);
@@ -248,7 +252,7 @@ export default function TokenLedger() {
       if (!response.ok) {
         throw new Error(getApiMessage(data, 'Could not create withdrawal.'));
       }
-      setBalance(Number(data?.wtk_balance || 0));
+      setBalance(normalizeBalance(data?.wtk_balance));
       setReloadKey((prev) => prev + 1);
       toastSuccess(data?.message || 'Withdrawal created.');
     } catch (err) {
@@ -264,7 +268,7 @@ export default function TokenLedger() {
         <div className="lg:col-span-2 bg-white p-7 md:p-8 rounded-[28px] border border-slate-100 shadow-sm relative overflow-hidden">
           <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600 mb-3">Current Wallet Balance</p>
           <div className="flex items-baseline gap-4">
-            <h2 className="text-5xl md:text-6xl font-black text-slate-900 leading-none">{formatNumber(balance)}</h2>
+            <h2 className="text-5xl md:text-6xl font-black text-slate-900 leading-none">{balance === null && loading ? '...' : formatNumber(balance)}</h2>
             <span className="text-lg md:text-xl font-medium text-slate-400">WTK</span>
           </div>
 

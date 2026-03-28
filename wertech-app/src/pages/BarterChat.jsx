@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Send, User, Shield, MoreVertical, Search, Paperclip, Smile, MessageSquare, Trash2, Check, X, Phone, Video, PhoneOff } from 'lucide-react';
+import { Send, User, Shield, MoreVertical, Search, Paperclip, Smile, MessageSquare, Trash2, Check, X, Phone, Video, PhoneOff, ChevronLeft } from 'lucide-react';
 import { subscribeUserEvents } from '../utils/liveEvents';
 
 const RTC_CONFIG = {
@@ -36,6 +36,15 @@ function createCallId() {
     return crypto.randomUUID();
   }
   return `call_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function NotificationBadge({ count }) {
+  if (!count || count <= 0) return null;
+  return (
+    <span className="min-w-[20px] h-[20px] px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
 }
 
 export default function BarterChat() {
@@ -570,9 +579,11 @@ export default function BarterChat() {
 
   const activeName = selectedUser?.username || 'Select a user';
   const activeColor = toColorClass(activeName);
+  const mobileInboxUsers = searchTerm.trim() ? searchResults : filteredParticipants;
+  const showMobileInbox = !selectedUser?.username;
 
   return (
-    <div className="flex h-[85vh] bg-white dark:bg-slate-950 rounded-[40px] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 m-6">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-8.5rem)] lg:h-[85vh] bg-white dark:bg-slate-950 rounded-[28px] lg:rounded-[40px] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 m-3 sm:m-4 lg:m-6">
       <div className="w-80 border-r dark:border-slate-800 hidden lg:flex flex-col bg-slate-50/50 dark:bg-slate-900/50">
         <div className="p-8">
           <h1 className="text-2xl font-black dark:text-white mb-6">Messages</h1>
@@ -681,9 +692,111 @@ export default function BarterChat() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-white dark:bg-slate-950">
-        <div className="p-6 border-b dark:border-slate-800 flex justify-between items-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
+      <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 min-h-0">
+        <div className={`lg:hidden px-4 pt-4 pb-3 border-b dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-3 ${showMobileInbox ? 'block' : 'hidden'}`}>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Messages</p>
+            <h1 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">Inbox</h1>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white dark:bg-slate-800 py-3 pl-12 pr-4 rounded-2xl text-sm outline-none border border-slate-100 dark:border-slate-700 focus:ring-2 focus:ring-teal-500/20 transition-all"
+            />
+          </div>
+          {messageRequests.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-600">Requests</p>
+              {messageRequests.map((req) => (
+                <div key={`mobile-req-${req.sender_username}`} className="p-4 rounded-[24px] bg-amber-50/90 border border-amber-100">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-slate-800 truncate">{req.sender_username}</p>
+                      <p className="mt-1 text-xs text-slate-500 line-clamp-2">{req.latest_text || 'Sent you a message request.'}</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-white text-[10px] font-black uppercase tracking-wider text-amber-600">New</span>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => handleMessageRequestAction(req.sender_username, 'accept')}
+                      className="flex-1 py-2.5 rounded-xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-wider"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => handleMessageRequestAction(req.sender_username, 'reject')}
+                      className="flex-1 py-2.5 rounded-xl bg-rose-100 text-rose-600 text-[10px] font-black uppercase tracking-wider"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+              {searchTerm.trim() ? 'Search Results' : 'Chats'}
+            </p>
+            {mobileInboxUsers.map((user) => (
+              <button
+                key={`mobile-user-${user._id || user.username}`}
+                onClick={() => {
+                  setSelectedUser(user);
+                  setParticipants((prev) =>
+                    prev.map((p) => (p.username === user.username ? { ...p, unread_count: 0 } : p))
+                  );
+                }}
+                className="w-full p-4 rounded-[24px] text-left border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/70 transition-all active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3">
+                  {user.profile_image ? (
+                    <img
+                      src={user.profile_image}
+                      alt={user.username}
+                      className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                    />
+                  ) : (
+                    <div className={`w-12 h-12 ${toColorClass(user.username)} rounded-2xl flex items-center justify-center text-white font-black shrink-0`}>
+                      {user.username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-black text-sm dark:text-white truncate">{user.username}</p>
+                      <NotificationBadge count={Number(user.unread_count || 0)} />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-teal-500">{user.status || 'Verified'}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-300 truncate">
+                      {user.latest_text || (searchTerm.trim() ? 'Tap to open chat' : 'Open conversation')}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
+            {!loadingUsers && mobileInboxUsers.length === 0 && (
+              <div className="rounded-[24px] border border-dashed border-slate-200 dark:border-slate-800 px-4 py-8 text-center">
+                <p className="text-sm font-black text-slate-500 dark:text-slate-300">
+                  {searchTerm.trim() ? 'No users found for this search.' : 'No chats yet. Search a user to start a conversation.'}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={`p-4 sm:p-5 lg:p-6 border-b dark:border-slate-800 flex justify-between items-center gap-3 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md ${showMobileInbox ? 'hidden lg:flex' : 'flex'}`}>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="lg:hidden p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-200"
+              title="Back to inbox"
+            >
+              <ChevronLeft size={18} />
+            </button>
             <div className={`w-12 h-12 ${activeColor} rounded-2xl flex items-center justify-center text-white`}>
               <User size={24} />
             </div>
@@ -719,7 +832,7 @@ export default function BarterChat() {
           </div>
         </div>
 
-        <div ref={threadRef} className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+        <div ref={threadRef} className={`flex-1 overflow-y-auto p-4 sm:p-5 lg:p-8 space-y-4 lg:space-y-6 custom-scrollbar ${showMobileInbox ? 'hidden lg:block' : 'block'}`}>
           {!selectedUser && (
             <div className="h-full flex flex-col items-center justify-center text-slate-300 opacity-70">
               <MessageSquare size={48} className="mb-2" />
@@ -747,7 +860,7 @@ export default function BarterChat() {
             const isSharedListing = msg.message_type === 'listing_share' && msg.shared_listing?.listing_id;
             return (
               <div key={msg._id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                <div className="group flex items-end gap-2 max-w-[70%]">
+                <div className="group flex items-end gap-2 max-w-[88%] sm:max-w-[78%] lg:max-w-[70%]">
                   {isMine && (
                     <button
                       onClick={() => handleDeleteMessage(msg._id)}
@@ -808,14 +921,14 @@ export default function BarterChat() {
           })}
         </div>
 
-        <div className="p-6 bg-slate-50/50 dark:bg-slate-900/50 border-t dark:border-slate-800">
+        <div className={`p-4 sm:p-5 lg:p-6 bg-slate-50/50 dark:bg-slate-900/50 border-t dark:border-slate-800 ${showMobileInbox ? 'hidden lg:block' : 'block'}`}>
           {sendInfo && (
             <p className="max-w-4xl mx-auto mb-3 text-[11px] font-bold text-amber-600">
               {sendInfo}
             </p>
           )}
           {pendingShareListing && (
-            <div className="max-w-4xl mx-auto mb-3 p-3 rounded-2xl border border-teal-200 bg-teal-50/70 flex items-center justify-between gap-3">
+            <div className="max-w-4xl mx-auto mb-3 p-3 rounded-2xl border border-teal-200 bg-teal-50/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-teal-700">Ready to share</p>
                 <p className="font-black text-slate-900 truncate">{pendingShareListing.title}</p>
@@ -840,7 +953,7 @@ export default function BarterChat() {
               </div>
             </div>
           )}
-          <form onSubmit={handleSend} className="max-w-4xl mx-auto flex gap-4">
+          <form onSubmit={handleSend} className="max-w-4xl mx-auto flex gap-3 sm:gap-4">
             <div className="flex-1 relative flex items-center">
               <Paperclip size={18} className="absolute left-6 text-slate-400" />
               <input
@@ -848,14 +961,14 @@ export default function BarterChat() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={selectedUser ? `Message ${selectedUser.username}...` : 'Select a user first'}
                 disabled={!selectedUser}
-                className="w-full bg-white dark:bg-slate-800 dark:text-white py-5 pl-14 pr-14 rounded-[24px] outline-none border dark:border-slate-700 font-bold shadow-sm focus:ring-2 focus:ring-teal-500/20 transition-all disabled:opacity-60"
+                className="w-full bg-white dark:bg-slate-800 dark:text-white py-4 sm:py-5 pl-12 sm:pl-14 pr-12 sm:pr-14 rounded-[22px] sm:rounded-[24px] outline-none border dark:border-slate-700 font-bold shadow-sm focus:ring-2 focus:ring-teal-500/20 transition-all disabled:opacity-60"
               />
               <Smile size={18} className="absolute right-6 text-slate-400" />
             </div>
             <button
               type="submit"
               disabled={!selectedUser || !input.trim()}
-              className="bg-teal-500 hover:bg-teal-600 text-white p-5 rounded-[22px] shadow-lg active:scale-95 transition-all disabled:opacity-60"
+              className="bg-teal-500 hover:bg-teal-600 text-white p-4 sm:p-5 rounded-[20px] sm:rounded-[22px] shadow-lg active:scale-95 transition-all disabled:opacity-60 shrink-0"
             >
               <Send size={24} />
             </button>
@@ -865,7 +978,7 @@ export default function BarterChat() {
 
       {(callState.status === 'incoming' || callState.status === 'calling' || callState.status === 'connected') && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-6 bg-slate-950/70 backdrop-blur-md">
-          <div className="w-full max-w-4xl rounded-[32px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl p-6">
+          <div className="w-full max-w-4xl rounded-[28px] lg:rounded-[32px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl p-4 sm:p-5 lg:p-6">
             <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600">

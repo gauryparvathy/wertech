@@ -2117,7 +2117,7 @@ app.post('/api/auth/verify-login-code', async (req, res) => {
       profile_image: user.profile_image || '',
       location: user.location || '',
       skills: Array.isArray(user.skills) ? user.skills : [],
-      radius: Number(user.radius || 15),
+      radius: Number.isFinite(Number(user.radius)) && Number(user.radius) > 0 ? Number(user.radius) : null,
       wtk_balance: user.wtk_balance || 0,
       has_subscribed: !!user.has_subscribed,
       access_token: accessToken,
@@ -2422,7 +2422,7 @@ app.get('/api/auth/me', async (req, res) => {
       profile_image: user.profile_image || '',
       location: user.location || '',
       skills: Array.isArray(user.skills) ? user.skills : [],
-      radius: Number(user.radius || 15),
+      radius: Number.isFinite(Number(user.radius)) && Number(user.radius) > 0 ? Number(user.radius) : null,
       wtk_balance: Number(user.wtk_balance || 0),
       has_subscribed: !!user.has_subscribed,
       ...getPremiumSummary(user, referralCount)
@@ -3252,7 +3252,7 @@ app.get('/api/users/:username/profile', async (req, res) => {
       location_lat: Number.isFinite(Number(user.location_lat)) ? Number(user.location_lat) : null,
       location_lng: Number.isFinite(Number(user.location_lng)) ? Number(user.location_lng) : null,
       skills: Array.isArray(user.skills) ? user.skills : [],
-      radius: Number(user.radius || 15),
+      radius: Number.isFinite(Number(user.radius)) && Number(user.radius) > 0 ? Number(user.radius) : null,
       profile_banner: user.profile_banner || '',
       profile_theme: sanitizeThemeName(user.profile_theme, 'ocean'),
       accent_color: normalizeHexColor(user.accent_color, '#14b8a6'),
@@ -3385,7 +3385,13 @@ app.patch('/api/users/:username/profile', async (req, res) => {
     }
 
     const oldUsername = user.username;
-    if (typeof location === 'string') user.location = location.trim();
+    if (typeof location === 'string') {
+      user.location = location.trim();
+      if (!user.location) {
+        user.location_lat = null;
+        user.location_lng = null;
+      }
+    }
     if (location_lat !== undefined) {
       const parsedLat = Number(location_lat);
       user.location_lat = Number.isFinite(parsedLat) ? parsedLat : null;
@@ -3398,7 +3404,11 @@ app.patch('/api/users/:username/profile', async (req, res) => {
     if (Array.isArray(skills)) user.skills = skills.map((s) => String(s).trim()).filter(Boolean);
     if (radius !== undefined) {
       const parsed = Number(radius);
-      if (!Number.isNaN(parsed) && parsed > 0) user.radius = parsed;
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        user.radius = parsed;
+      } else {
+        user.radius = null;
+      }
     }
     if (profile_visibility === 'public' || profile_visibility === 'private') {
       user.profile_visibility = profile_visibility;
@@ -3477,7 +3487,7 @@ app.patch('/api/users/:username/profile', async (req, res) => {
       profile_image: user.profile_image || '',
       location: user.location || '',
       skills: Array.isArray(user.skills) ? user.skills : [],
-      radius: Number(user.radius || 15),
+      radius: Number.isFinite(Number(user.radius)) && Number(user.radius) > 0 ? Number(user.radius) : null,
       profile_theme: sanitizeThemeName(user.profile_theme, 'ocean'),
       profile_banner: user.profile_banner || '',
       accent_color: normalizeHexColor(user.accent_color, '#14b8a6'),

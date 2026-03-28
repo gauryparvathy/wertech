@@ -92,6 +92,7 @@ export default function Explore() {
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [currentCoords, setCurrentCoords] = useState(null);
   const [locationError, setLocationError] = useState('');
@@ -492,6 +493,7 @@ export default function Explore() {
   const nearestUser = sortedUsers.find((item) => item.distanceKm !== null) || null;
   const nearestListing = sortedListings.find((item) => item.distanceKm !== null) || null;
   const mapEmbedUrl = currentCoords ? createMapEmbedUrl(currentCoords) : '';
+  const showHistoryPanel = searchFocused || (!!searchQuery.trim() && searchHistory.length > 0);
 
   useEffect(() => {
     const openListingId = location.state?.openListingId;
@@ -537,7 +539,7 @@ export default function Explore() {
 
   if (initialLoading) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 space-y-8 max-w-7xl mx-auto relative">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 max-w-7xl mx-auto relative">
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="flex-1 h-[76px] rounded-[24px] bg-white/80 border border-slate-100 animate-pulse w-full" />
           <div className="h-[76px] w-full md:w-[230px] rounded-[24px] bg-white/80 border border-slate-100 animate-pulse" />
@@ -547,16 +549,16 @@ export default function Explore() {
             <div key={item} className="h-10 w-24 rounded-2xl bg-white/80 border border-slate-100 animate-pulse" />
           ))}
         </div>
-        <div className="bg-white rounded-[32px] border border-slate-100 p-8 animate-pulse">
+        <div className="bg-white rounded-[24px] lg:rounded-[32px] border border-slate-100 p-5 lg:p-8 animate-pulse">
           <div className="h-5 w-40 rounded-full bg-slate-100" />
           <div className="mt-5 h-10 w-3/4 rounded-2xl bg-slate-100" />
           <div className="mt-3 h-4 w-1/3 rounded-full bg-slate-100" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8">
           {[1, 2, 3].map((item) => (
             <div key={item} className="bg-white rounded-[36px] border border-slate-100 overflow-hidden animate-pulse">
               <div className="h-52 bg-slate-100" />
-              <div className="p-8 space-y-4">
+              <div className="p-5 lg:p-8 space-y-4">
                 <div className="h-6 w-2/3 rounded-full bg-slate-100" />
                 <div className="h-4 w-1/3 rounded-full bg-slate-100" />
                 <div className="h-12 rounded-2xl bg-slate-100" />
@@ -569,67 +571,112 @@ export default function Explore() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 space-y-8 max-w-7xl mx-auto relative">
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="flex-1 relative w-full">
-          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-teal-600" size={20} />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                saveSearchHistory(searchQuery);
-              }
-            }}
-            placeholder={SEARCH_SUGGESTIONS[suggestionIndex]}
-            className="w-full pl-16 pr-6 py-5 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 outline-none ring-2 ring-transparent focus:ring-teal-500 transition-all font-bold shadow-sm dark:text-white"
-          />
-        </div>
-
-        <div className="flex flex-col items-end gap-2">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 max-w-7xl mx-auto relative">
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-teal-600" size={18} />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 120)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  saveSearchHistory(searchQuery);
+                }
+              }}
+              placeholder={SEARCH_SUGGESTIONS[suggestionIndex]}
+              className="w-full pl-14 pr-12 py-4 md:py-5 bg-white dark:bg-slate-900 rounded-[22px] md:rounded-[24px] border border-slate-100 dark:border-slate-800 outline-none ring-2 ring-transparent focus:ring-teal-500 transition-all font-bold shadow-sm dark:text-white"
+            />
+            {searchQuery && (
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all"
+                title="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
           {activeTab !== 'Users' && (
             <button
               onClick={() => setShowFilters(true)}
-              className={`p-5 rounded-[24px] transition-all flex items-center gap-3 shadow-lg ${showFilters ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+              className={`shrink-0 h-12 w-12 md:h-[60px] md:w-[60px] rounded-[18px] md:rounded-[22px] transition-all flex items-center justify-center shadow-lg ${showFilters ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+              title="Product filters"
             >
-              <SlidersHorizontal size={24} />
-              <span className="font-bold text-sm">Product Filters</span>
+              <SlidersHorizontal size={18} />
             </button>
           )}
-          <div className="flex items-center gap-3 text-[11px] font-bold">
-            <button
-              onClick={() => setShowAllHistory((prev) => !prev)}
-              className="text-slate-400 hover:text-teal-600 transition-all"
-            >
-              {showAllHistory ? 'Show less' : 'See all'}
-            </button>
-            <button
-              onClick={() => setShowClearHistoryModal(true)}
-              className="text-slate-400 hover:text-rose-500 transition-all"
-            >
-              Clear all
-            </button>
-          </div>
         </div>
-      </div>
 
-      <div className="flex flex-wrap gap-3">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => {
-              setActiveTab(tab);
-              saveSearchHistory(searchQuery);
-            }}
-            className={`px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-              activeTab === tab
-                ? 'bg-gradient-to-r from-rose-500 via-orange-500 to-lime-700 text-white'
-                : 'bg-white text-slate-500 border border-slate-200 hover:border-teal-400 hover:text-teal-600'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                saveSearchHistory(searchQuery);
+              }}
+              className={`shrink-0 px-3.5 py-2 rounded-full font-black text-[11px] uppercase tracking-[0.16em] transition-all ${
+                activeTab === tab
+                  ? 'bg-gradient-to-r from-rose-500 via-orange-500 to-lime-700 text-white'
+                  : 'bg-white text-slate-500 border border-slate-200 hover:border-teal-400 hover:text-teal-600'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {showHistoryPanel && searchHistory.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Recent Searches</p>
+              <div className="flex items-center gap-3 text-[11px] font-bold">
+                <button
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setShowAllHistory((prev) => !prev)}
+                  className="text-slate-400 hover:text-teal-600 transition-all"
+                >
+                  {showAllHistory ? 'Show less' : 'See all'}
+                </button>
+                <button
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setShowClearHistoryModal(true)}
+                  className="text-slate-400 hover:text-rose-500 transition-all"
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {visibleHistory.map((item) => (
+                <div key={item.id} className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-full px-3 py-1.5">
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setSearchQuery(item.query);
+                      saveSearchHistory(item.query);
+                    }}
+                    className="text-xs font-bold text-slate-600 dark:text-slate-200"
+                  >
+                    {item.query}
+                  </button>
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => removeHistoryItem(item.id)}
+                    className="text-slate-400 hover:text-rose-500 transition-all"
+                    title="Remove search history"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -645,78 +692,6 @@ export default function Explore() {
         {locationSyncing && <span className="px-4 py-2 rounded-2xl bg-cyan-50 text-cyan-700 text-xs font-black uppercase tracking-widest">Syncing Location</span>}
         {!currentCoords && locationError && <span className="px-4 py-2 rounded-2xl bg-rose-50 text-rose-600 text-xs font-black">{locationError}</span>}
       </div>
-
-      {currentCoords && (
-        <section className="grid grid-cols-1 xl:grid-cols-[1.1fr,0.9fr] gap-6">
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-              <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600">Real-Time Nearby Map</p>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-2">Live location connected</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-2">Explore now auto-sorts nearby users and listings using your device location.</p>
-            </div>
-            {mapEmbedUrl ? (
-              <iframe title="Nearby map" src={mapEmbedUrl} className="w-full h-[320px] border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-            ) : (
-              <div className="h-[320px] flex items-center justify-center text-slate-400 font-bold">Map preview unavailable right now.</div>
-            )}
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nearest Matches</p>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-2">Closest options around you</h3>
-            </div>
-            {nearestUser && (
-              <button onClick={() => navigate(`/profile/${encodeURIComponent(nearestUser.username)}`)} className="w-full text-left p-4 rounded-[24px] bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-                <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">Nearest User</p>
-                <p className="mt-2 text-lg font-black text-slate-900 dark:text-white">{nearestUser.username}</p>
-                <p className="text-sm font-medium text-slate-500 mt-1">{nearestUser.location}</p>
-                <p className="text-xs font-black text-cyan-600 mt-2">{nearestUser.distanceLabel}</p>
-              </button>
-            )}
-            {nearestListing && (
-              <button onClick={() => setSelectedItem(nearestListing)} className="w-full text-left p-4 rounded-[24px] bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Nearest Listing</p>
-                <p className="mt-2 text-lg font-black text-slate-900 dark:text-white">{nearestListing.title}</p>
-                <p className="text-sm font-medium text-slate-500 mt-1">{nearestListing.location}</p>
-                <p className="text-xs font-black text-cyan-600 mt-2">{nearestListing.distanceLabel}</p>
-              </button>
-            )}
-            {!nearestUser && !nearestListing && (
-              <div className="p-4 rounded-[24px] bg-slate-50 dark:bg-slate-800/40 text-slate-400 font-bold">
-                Nearby matches will appear after location data is available.
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {searchHistory.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-4">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Search History</p>
-          <div className="flex flex-wrap gap-2">
-            {visibleHistory.map((item) => (
-              <div key={item.id} className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-full px-3 py-1.5">
-                <button
-                  onClick={() => {
-                    setSearchQuery(item.query);
-                  }}
-                  className="text-xs font-bold text-slate-600 dark:text-slate-200"
-                >
-                  {item.query}
-                </button>
-                <button
-                  onClick={() => removeHistoryItem(item.id)}
-                  className="text-slate-400 hover:text-rose-500 transition-all"
-                  title="Remove search history"
-                >
-                  <X size={13} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <AnimatePresence>
         {showClearHistoryModal && (
@@ -762,11 +737,43 @@ export default function Explore() {
         {showFilters && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowFilters(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60]" />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 h-full w-full max-w-sm bg-white dark:bg-slate-900 z-[70] p-10 shadow-2xl space-y-10">
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed right-0 top-0 h-full w-full max-w-sm bg-white dark:bg-slate-900 z-[70] p-6 lg:p-10 shadow-2xl space-y-8 lg:space-y-10">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-black dark:text-white">Product Filters</h2>
                 <button onClick={() => setShowFilters(false)} className="p-2 dark:text-white"><X /></button>
               </div>
+              {currentCoords && (
+                <div className="rounded-[28px] overflow-hidden border border-slate-100 dark:border-slate-800">
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600">Map Preview</p>
+                    <p className="mt-1 text-sm font-bold text-slate-500 dark:text-slate-300">Nearby map is available inside filters.</p>
+                  </div>
+                  {mapEmbedUrl ? (
+                    <iframe title="Nearby map" src={mapEmbedUrl} className="w-full h-48 border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                  ) : (
+                    <div className="h-48 flex items-center justify-center text-slate-400 font-bold">Map preview unavailable right now.</div>
+                  )}
+                </div>
+              )}
+              {(nearestUser || nearestListing) && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nearest Matches</p>
+                  {nearestUser && (
+                    <button onClick={() => navigate(`/profile/${encodeURIComponent(nearestUser.username)}`)} className="w-full text-left p-4 rounded-[24px] bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-teal-600">Nearest User</p>
+                      <p className="mt-2 text-lg font-black text-slate-900 dark:text-white">{nearestUser.username}</p>
+                      <p className="text-xs font-black text-cyan-600 mt-2">{nearestUser.distanceLabel}</p>
+                    </button>
+                  )}
+                  {nearestListing && (
+                    <button onClick={() => setSelectedItem(nearestListing)} className="w-full text-left p-4 rounded-[24px] bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Nearest Listing</p>
+                      <p className="mt-2 text-lg font-black text-slate-900 dark:text-white">{nearestListing.title}</p>
+                      <p className="text-xs font-black text-cyan-600 mt-2">{nearestListing.distanceLabel}</p>
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="space-y-4">
                 <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
                   <label className="flex items-center gap-2"><Navigation size={12} /> Max Distance</label>
@@ -866,10 +873,10 @@ export default function Explore() {
 
       {showProducts && (
         <section className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8">
             <AnimatePresence mode="popLayout">
               {sortedListings.map((item) => (
-                <motion.div layout key={item.id} className="bg-white dark:bg-slate-900 rounded-[40px] border dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-2xl transition-all">
+                <motion.div layout key={item.id} className="bg-white dark:bg-slate-900 rounded-[28px] lg:rounded-[40px] border dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-2xl transition-all">
                   {item.image && (
                     <div className="h-52 overflow-hidden relative">
                       <img src={item.image} alt="" className="w-full h-full object-cover" />
@@ -877,7 +884,7 @@ export default function Explore() {
                       {(item.boosted || item.ownerBoosted) && <span className="absolute top-4 right-4 bg-amber-500 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase inline-flex items-center gap-1"><Zap size={10} /> Boosted</span>}
                     </div>
                   )}
-                  <div className="p-8">
+                  <div className="p-5 lg:p-8">
                     <div className="flex justify-between items-start mb-4">
                       <h3 className="text-xl font-black dark:text-white leading-tight">{item.title}</h3>
                       <p className="text-2xl font-black text-teal-600">{item.wtk}</p>
@@ -904,7 +911,7 @@ export default function Explore() {
       <AnimatePresence>
         {selectedItem && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-[40px] overflow-hidden relative shadow-2xl border dark:border-slate-800">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-[28px] lg:rounded-[40px] overflow-hidden relative shadow-2xl border dark:border-slate-800">
               <button onClick={() => setSelectedItem(null)} className="absolute top-6 right-6 z-10 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-red-500 transition-all"><X size={20} /></button>
               <div className="grid grid-cols-1 md:grid-cols-2">
                 {selectedItem.image ? (
@@ -912,7 +919,7 @@ export default function Explore() {
                 ) : (
                   <div className="h-64 md:h-full bg-slate-100 dark:bg-slate-800" />
                 )}
-                <div className="p-10 space-y-6">
+                <div className="p-5 sm:p-6 lg:p-10 space-y-5 lg:space-y-6">
                   <div>
                     <span className="text-teal-600 font-black text-[10px] uppercase tracking-widest">{selectedItem.category}</span>
                     <h2 className="text-3xl font-black dark:text-white mt-1">{selectedItem.title}</h2>
@@ -922,12 +929,12 @@ export default function Explore() {
                     </div>
                   </div>
                   <p className="text-slate-500 dark:text-slate-400 font-bold leading-relaxed">{selectedItem.desc}</p>
-                  <div className="pt-6 border-t dark:border-slate-800 flex items-center justify-between">
+                  <div className="pt-6 border-t dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <p className="text-3xl font-black text-teal-600">{selectedItem.wtk} WTK</p>
                       <p className="text-[10px] font-black text-slate-400 uppercase">Owner: {selectedItem.user}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                       {selectedItem.user !== currentUsername && (
                         <button
                           onClick={() => {
@@ -935,7 +942,7 @@ export default function Explore() {
                             setTxStatus('');
                             setShowTransactionModal(true);
                           }}
-                          className="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-emerald-700 transition-all"
+                          className="bg-emerald-600 text-white px-5 py-3.5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all"
                         >
                           Transaction <ArrowUpRight size={16} />
                         </button>
@@ -956,13 +963,13 @@ export default function Explore() {
                             }
                           })
                         }
-                        className="bg-slate-900 text-white px-6 py-4 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-slate-800 transition-all"
+                        className="bg-slate-900 text-white px-5 py-3.5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"
                       >
                         Share <Share2 size={16} />
                       </button>
                       <button
                         onClick={() => navigate('/barter-request', { state: { item: selectedItem } })}
-                        className="bg-teal-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs flex items-center gap-2 hover:bg-teal-700 transition-all"
+                        className="bg-teal-600 text-white px-5 py-3.5 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-teal-700 transition-all"
                       >
                         Propose Trade <Zap size={16} />
                       </button>
