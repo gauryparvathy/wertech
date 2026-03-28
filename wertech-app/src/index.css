@@ -121,13 +121,6 @@
   }
 
   .app-main {
-<<<<<<< HEAD
-    @apply relative overflow-y-auto;
-  }
-
-  .app-content {
-    @apply relative min-h-screen;
-=======
     @apply relative overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-full;
     min-height: 100dvh;
   }
@@ -135,7 +128,6 @@
   .app-content {
     @apply relative min-h-screen w-full max-w-full px-0 pb-24 md:pb-0 overflow-x-hidden;
     min-height: 100dvh;
->>>>>>> 12c481c4 (Improve phone viewport and mobile shell sizing)
   }
 
   .app-card {
