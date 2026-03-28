@@ -889,11 +889,11 @@ const UserSchema = new mongoose.Schema({
   wtk_balance: { type: Number, default: INSTALL_BONUS_WTK },
   status: { type: String, default: 'Verified' },
   account_state: { type: String, enum: ['ACTIVE', 'PENDING', 'SUSPENDED', 'INACTIVE', 'BANNED'], default: 'ACTIVE' },
-  location: { type: String, default: 'Kalamassery, Kochi' },
+  location: { type: String, default: '' },
   location_lat: { type: Number, default: null },
   location_lng: { type: Number, default: null },
-  skills: { type: [String], default: ['Web Design', 'Gardening', 'Plumbing'] },
-  radius: { type: Number, default: 15 },
+  skills: { type: [String], default: [] },
+  radius: { type: Number, default: null },
   profile_image: { type: String, default: '' },
   profile_visibility: { type: String, enum: ['public', 'private'], default: 'public' },
   friends: { type: [String], default: [] },
@@ -1938,8 +1938,16 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     const identifier = String(email || '').trim();
     const identifierRegex = toUsernameRegex(identifier);
+    const normalizedPhone = normalizePhone(identifier);
+    const lookupConditions = [
+      { email: identifierRegex },
+      { username: identifierRegex }
+    ];
+    if (normalizedPhone && isValidPhone(normalizedPhone)) {
+      lookupConditions.push({ phone: normalizedPhone });
+    }
     const user = await User.findOne({
-      $or: [{ email: identifierRegex }, { username: identifierRegex }, { phone: normalizePhone(identifier) }]
+      $or: lookupConditions
     });
 
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -2045,7 +2053,6 @@ app.post('/api/auth/login', async (req, res) => {
     user.refresh_token_expires_at = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
     await user.save();
     const referralCount = await getReferralCount(user.username);
-    const privateAnalytics = isOwnProfile ? await buildUserProfileAnalytics(user.username) : null;
 
     res.status(200).json({
       message: "Login successful",
@@ -2054,7 +2061,7 @@ app.post('/api/auth/login', async (req, res) => {
       profile_image: user.profile_image || '',
       location: user.location || '',
       skills: Array.isArray(user.skills) ? user.skills : [],
-      radius: Number(user.radius || 15),
+      radius: Number.isFinite(Number(user.radius)) && Number(user.radius) > 0 ? Number(user.radius) : null,
       wtk_balance: user.wtk_balance || 0,
       has_subscribed: !!user.has_subscribed,
       access_token: accessToken,

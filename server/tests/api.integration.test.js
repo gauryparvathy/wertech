@@ -100,6 +100,31 @@ describe('API integration: auth, transactions, chat, moderation, reports', () =>
     );
   });
 
+  test('login does not match unrelated legacy users with empty phone values', async () => {
+    await models.User.create({
+      username: 'legacy_empty_phone',
+      email: 'legacy@example.com',
+      phone: '',
+      password: 'some-other-password',
+      role: 'user',
+      status: 'Verified',
+      account_state: 'ACTIVE'
+    });
+
+    await registerUser({
+      username: 'kunju',
+      email: 'kunju@example.com',
+      password: 'password123'
+    });
+
+    const login = await loginUser({
+      email: 'kunju',
+      password: 'password123'
+    });
+
+    expect(login.username).toBe('kunju');
+  });
+
   test('transactions flow: spend WTK creates sender+receiver records', async () => {
     await registerUser({
       username: 'bob',
