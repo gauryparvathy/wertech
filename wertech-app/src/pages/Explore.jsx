@@ -81,11 +81,8 @@ export default function Explore() {
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [maxDistance, setMaxDistance] = useState(100);
-  const [maxPrice, setMaxPrice] = useState(10000);
-  const [showPremiumOnly, setShowPremiumOnly] = useState(false);
-  const [showBoostedOnly, setShowBoostedOnly] = useState(false);
-  const [sortMode, setSortMode] = useState('relevance');
+  const [maxDistance, setMaxDistance] = useState(null);
+  const [maxPrice, setMaxPrice] = useState(null);
   const [users, setUsers] = useState([]);
   const [listings, setListings] = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
@@ -111,9 +108,14 @@ export default function Explore() {
     try {
       const [usersRes, listingsRes] = await Promise.all([
         fetch('/api/users'),
-        fetch('/api/listings')
+        fetch('/api/listings?page=1&limit=100&explicit=1')
       ]);
       const [usersData, listingsData] = await Promise.all([usersRes.json(), listingsRes.json()]);
+      const listingRows = Array.isArray(listingsData)
+        ? listingsData
+        : Array.isArray(listingsData?.items)
+          ? listingsData.items
+          : [];
 
       if (usersRes.ok && Array.isArray(usersData)) {
         const mappedUsers = usersData.map((u) => ({
@@ -132,9 +134,9 @@ export default function Explore() {
           premiumTier: u.premium_tier || 'free'
         }));
         setUsers(mappedUsers);
-        if (listingsRes.ok && Array.isArray(listingsData)) {
+        if (listingsRes.ok && Array.isArray(listingRows)) {
           const byUsername = new Map(mappedUsers.map((u) => [u.username, u]));
-          const mappedListings = listingsData.map((item) => {
+          const mappedListings = listingRows.map((item) => {
             const ownerProfile = byUsername.get(item.owner_username);
             return {
               id: item._id,
@@ -156,8 +158,8 @@ export default function Explore() {
           });
           setListings(mappedListings);
         }
-      } else if (listingsRes.ok && Array.isArray(listingsData)) {
-        const mappedListings = listingsData.map((item) => ({
+      } else if (listingsRes.ok && Array.isArray(listingRows)) {
+        const mappedListings = listingRows.map((item) => ({
           id: item._id,
           title: item.title,
           category: item.type === 'skill' ? 'Skill' : 'Product',
@@ -275,7 +277,6 @@ export default function Explore() {
         };
         setCurrentCoords(nextCoords);
         setLocationError('');
-        setSortMode((prev) => (prev === 'relevance' ? 'nearby' : prev));
       },
       (error) => {
         setLocationError(error?.message || 'Could not access live location.');
@@ -366,6 +367,14 @@ export default function Explore() {
   }, [users, listings, locationCache]);
 
   const query = searchQuery.trim().toLowerCase();
+
+  useEffect(() => {
+    if (!query) return undefined;
+    const timer = setTimeout(() => {
+      loadData();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query, loadData]);
 
   const usersWithDistance = useMemo(
     () =>
@@ -468,42 +477,64 @@ export default function Explore() {
           String(item.category || '').toLowerCase().includes(query) ||
           String(item.desc || '').toLowerCase().includes(query) ||
           String(item.location || '').toLowerCase().includes(query);
-        const matchesDist = Number(item.effectiveDist || 0) <= Number(maxDistance);
-        const matchesPrice = Number(item.wtk || 0) <= Number(maxPrice);
-        const matchesPremium = !showPremiumOnly || !!item.premiumVerified;
-        const matchesBoosted = !showBoostedOnly || !!item.boosted || !!item.ownerBoosted;
-        return matchesSearch && matchesDist && matchesPrice && matchesPremium && matchesBoosted;
+        const matchesDist = maxDistance === null || Number(item.effectiveDist || 0) <= Number(maxDistance);
+        const matchesPrice = maxPrice === null || Number(item.wtk || 0) <= Number(maxPrice);
+        return matchesSearch && matchesDist && matchesPrice;
       }),
-    [listingsWithDistance, query, maxDistance, maxPrice, showPremiumOnly, showBoostedOnly]
+    [listingsWithDistance, query, maxDistance, maxPrice]
   );
 
   const sortedUsers = useMemo(() => {
-    const items = [...filteredUsers];
-    if (sortMode === 'premium') {
-      items.sort((a, b) => Number(b.premiumVerified || b.profileBoostActive) - Number(a.premiumVerified || a.profileBoostActive));
-    } else if (sortMode === 'nearby') {
-      items.sort((a, b) => Number(a.distanceKm ?? Number.MAX_SAFE_INTEGER) - Number(b.distanceKm ?? Number.MAX_SAFE_INTEGER));
-    }
-    return items.filter((item) => (!showPremiumOnly || item.premiumVerified) && (!showBoostedOnly || item.profileBoostActive));
-  }, [filteredUsers, showPremiumOnly, showBoostedOnly, sortMode]);
+    if (!query) return [...filteredUsers];
+    return [...filteredUsers].sort((a, b) => {
+      const aUsername = String(a.username || '').toLowerCase();
+      const bUsername = String(b.username || '').toLowerCase();
+      const aEmail = String(a.email || '').toLowerCase();
+      const bEmail = String(b.email || '').toLowerCase();
+      const aExact = Number(aUsername === query || aEmail === query);
+      const bExact = Number(bUsername === query || bEmail === query);
+      if (aExact !== bExact) return bExact - aExact;
+      const aStarts = Number(aUsername.startsWith(query) || aEmail.startsWith(query));
+      const bStarts = Number(bUsername.startsWith(query) || bEmail.startsWith(query));
+      if (aStarts !== bStarts) return bStarts - aStarts;
+      return aUsername.localeCompare(bUsername);
+    });
+  }, [filteredUsers, query]);
 
   const sortedListings = useMemo(() => {
-    const items = [...filteredListings];
-    if (sortMode === 'premium') {
-      items.sort((a, b) => Number(b.boosted || b.ownerBoosted || b.premiumVerified) - Number(a.boosted || a.ownerBoosted || a.premiumVerified));
-    } else if (sortMode === 'nearby') {
-      items.sort((a, b) => Number(a.effectiveDist ?? Number.MAX_SAFE_INTEGER) - Number(b.effectiveDist ?? Number.MAX_SAFE_INTEGER));
-    } else if (sortMode === 'value') {
-      items.sort((a, b) => Number(a.wtk || 0) - Number(b.wtk || 0));
-    }
-    return items;
-  }, [filteredListings, sortMode]);
+    if (!query) return [...filteredListings];
+    return [...filteredListings].sort((a, b) => {
+      const aTitle = String(a.title || '').toLowerCase();
+      const bTitle = String(b.title || '').toLowerCase();
+      const aOwner = String(a.user || '').toLowerCase();
+      const bOwner = String(b.user || '').toLowerCase();
+      const aExact = Number(aTitle === query || aOwner === query);
+      const bExact = Number(bTitle === query || bOwner === query);
+      if (aExact !== bExact) return bExact - aExact;
+      const aStarts = Number(aTitle.startsWith(query) || aOwner.startsWith(query));
+      const bStarts = Number(bTitle.startsWith(query) || bOwner.startsWith(query));
+      if (aStarts !== bStarts) return bStarts - aStarts;
+      return aTitle.localeCompare(bTitle);
+    });
+  }, [filteredListings, query]);
 
   const showUsers = activeTab === 'All' || activeTab === 'Users' || activeTab === 'Skills' || activeTab === 'Area';
   const showProducts = activeTab === 'All' || activeTab === 'Products';
   const visibleHistory = showAllHistory ? searchHistory : searchHistory.slice(0, 6);
-  const nearestUser = sortedUsers.find((item) => item.distanceKm !== null) || null;
-  const nearestListing = sortedListings.find((item) => item.distanceKm !== null) || null;
+  const nearestUser = useMemo(() => {
+    const withDistance = sortedUsers.filter((item) => item.distanceKm !== null);
+    if (withDistance.length === 0) return null;
+    return withDistance.reduce((closest, item) => (
+      closest === null || Number(item.distanceKm) < Number(closest.distanceKm) ? item : closest
+    ), null);
+  }, [sortedUsers]);
+  const nearestListing = useMemo(() => {
+    const withDistance = sortedListings.filter((item) => item.distanceKm !== null);
+    if (withDistance.length === 0) return null;
+    return withDistance.reduce((closest, item) => (
+      closest === null || Number(item.distanceKm) < Number(closest.distanceKm) ? item : closest
+    ), null);
+  }, [sortedListings]);
   const mapEmbedUrl = currentCoords ? createMapEmbedUrl(currentCoords) : '';
   const showHistoryPanel = searchFocused || (!!searchQuery.trim() && searchHistory.length > 0);
 
@@ -692,14 +723,6 @@ export default function Explore() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button onClick={() => setShowPremiumOnly((prev) => !prev)} className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${showPremiumOnly ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>Premium Only</button>
-        <button onClick={() => setShowBoostedOnly((prev) => !prev)} className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${showBoostedOnly ? 'bg-cyan-600 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>Boosted Only</button>
-        <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-white text-slate-500 border border-slate-200 outline-none">
-          <option value="relevance">Relevance</option>
-          <option value="premium">Premium First</option>
-          <option value="nearby">Nearby</option>
-          <option value="value">Best Value</option>
-        </select>
         {currentCoords && <span className="px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-widest">Live Nearby On</span>}
         {locationSyncing && <span className="px-4 py-2 rounded-2xl bg-cyan-50 text-cyan-700 text-xs font-black uppercase tracking-widest">Syncing Location</span>}
         {!currentCoords && locationError && <span className="px-4 py-2 rounded-2xl bg-rose-50 text-rose-600 text-xs font-black">{locationError}</span>}
@@ -789,18 +812,18 @@ export default function Explore() {
               <div className="space-y-4">
                 <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
                   <label className="flex items-center gap-2"><Navigation size={12} /> Max Distance</label>
-                  <span>{maxDistance} km</span>
+                  <span>{maxDistance === null ? 'Any' : `${maxDistance} km`}</span>
                 </div>
-                <input type="range" min="1" max="100" step="1" value={maxDistance} onChange={(e) => setMaxDistance(e.target.value)} className="w-full accent-teal-600" />
+                <input type="range" min="1" max="100" step="1" value={maxDistance ?? 100} onChange={(e) => setMaxDistance(Number(e.target.value))} className="w-full accent-teal-600" />
               </div>
               <div className="space-y-4">
                 <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
                   <label className="flex items-center gap-2"><Coins size={12} /> Max WTK</label>
-                  <span>{maxPrice} WTK</span>
+                  <span>{maxPrice === null ? 'Any' : `${maxPrice} WTK`}</span>
                 </div>
-                <input type="range" min="10" max="10000" step="10" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-full accent-teal-600" />
+                <input type="range" min="10" max="10000" step="10" value={maxPrice ?? 10000} onChange={(e) => setMaxPrice(Number(e.target.value))} className="w-full accent-teal-600" />
               </div>
-              <button onClick={() => { setMaxDistance(100); setMaxPrice(10000); setSearchQuery(''); }} className="w-full py-4 text-slate-400 font-bold text-xs uppercase hover:text-red-500">Reset Filters</button>
+              <button onClick={() => { setMaxDistance(null); setMaxPrice(null); }} className="w-full py-4 text-slate-400 font-bold text-xs uppercase hover:text-red-500">Reset Filters</button>
             </motion.div>
           </>
         )}

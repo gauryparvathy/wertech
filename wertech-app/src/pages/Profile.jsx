@@ -11,6 +11,7 @@ export default function Profile() {
   const { username: routeUsername } = useParams();
   const navigate = useNavigate();
   const currentUsername = localStorage.getItem('username') || '';
+  const currentEmail = localStorage.getItem('userEmail') || '';
   const targetUsername = routeUsername || currentUsername;
   const isOwnProfile = !routeUsername || routeUsername === currentUsername;
   const fileInputRef = useRef(null);
@@ -46,12 +47,12 @@ export default function Profile() {
   
   // PROFILE STATE
   const [profile, setProfile] = useState({
-    name: "",
-    email: "",
+    name: currentUsername || "",
+    email: currentEmail || "",
     profileImage: "",
-    location: "Kalamassery, Kochi",
-    skills: ["Web Design", "Gardening", "Plumbing"],
-    radius: 15,
+    location: "",
+    skills: [],
+    radius: null,
     profileBanner: "",
     profileTheme: "ocean",
     accentColor: "#14b8a6",
@@ -78,9 +79,9 @@ export default function Profile() {
           name: data.username || targetUsername,
           email: data.email || '',
           profileImage: data.profile_image || '',
-          location: data.location || "Kalamassery, Kochi",
-          skills: Array.isArray(data.skills) && data.skills.length > 0 ? data.skills : ["Web Design", "Gardening", "Plumbing"],
-          radius: Number(data.radius || 15),
+          location: data.location || '',
+          skills: Array.isArray(data.skills) ? data.skills : [],
+          radius: Number.isFinite(Number(data.radius)) && Number(data.radius) > 0 ? Number(data.radius) : null,
           profileBanner: data.profile_banner || '',
           profileTheme: data.profile_theme || 'ocean',
           accentColor: data.accent_color || '#14b8a6',
@@ -109,12 +110,12 @@ export default function Profile() {
         }
       } catch (err) {
         const fallback = {
-          name: targetUsername,
-          email: "",
+          name: targetUsername || currentUsername,
+          email: isOwnProfile ? currentEmail : "",
           profileImage: "",
-          location: "Kalamassery, Kochi",
-          skills: ["Web Design", "Gardening", "Plumbing"],
-          radius: 15,
+          location: "",
+          skills: [],
+          radius: null,
           profileBanner: '',
           profileTheme: 'ocean',
           accentColor: '#14b8a6',
@@ -159,7 +160,7 @@ export default function Profile() {
 
     loadProfile();
     loadMyListings(targetUsername);
-  }, [targetUsername, isOwnProfile, currentUsername]);
+  }, [targetUsername, isOwnProfile, currentUsername, currentEmail]);
 
   const sendFriendRequest = async () => {
     if (!currentUsername || !targetUsername || isOwnProfile) return;
@@ -455,9 +456,7 @@ export default function Profile() {
           location: editForm.location,
           skills: editForm.skills,
           radius: editForm.radius,
-          profile_theme: editForm.profileTheme || 'ocean',
-          profile_banner: editForm.profileBanner || '',
-          accent_color: editForm.accentColor || '#14b8a6'
+          profile_banner: editForm.profileBanner || ''
         })
       });
       const data = await response.json();
@@ -472,7 +471,7 @@ export default function Profile() {
         profileImage: data.profile_image || '',
         location: data.location,
         skills: data.skills,
-        radius: Number(data.radius || 15),
+        radius: Number.isFinite(Number(data.radius)) && Number(data.radius) > 0 ? Number(data.radius) : null,
         profileBanner: data.profile_banner || '',
         profileTheme: data.profile_theme || 'ocean',
         accentColor: data.accent_color || '#14b8a6',
@@ -490,6 +489,9 @@ export default function Profile() {
 
       if (data.username && data.username !== currentUsername) {
         localStorage.setItem('username', data.username);
+      }
+      if (data.email !== undefined) {
+        localStorage.setItem('userEmail', String(data.email || ''));
       }
       if (data.wtk_balance !== undefined) {
         localStorage.setItem('userBalance', String(data.wtk_balance || 0));
@@ -545,8 +547,8 @@ export default function Profile() {
 
   if (initialLoading) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-10 max-w-5xl mx-auto space-y-8">
-        <div className="bg-white rounded-[50px] p-12 shadow-sm border border-slate-50">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto space-y-6 lg:space-y-8">
+        <div className="bg-white rounded-[32px] lg:rounded-[50px] p-6 sm:p-8 lg:p-12 shadow-sm border border-slate-50">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="w-32 h-32 rounded-full bg-slate-100 animate-pulse" />
             <div className="flex-1 space-y-4 w-full">
@@ -556,20 +558,20 @@ export default function Profile() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1 h-72 rounded-[40px] bg-white border border-slate-100 animate-pulse" />
-          <div className="lg:col-span-2 h-72 rounded-[40px] bg-white border border-slate-100 animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
+          <div className="lg:col-span-1 h-60 lg:h-72 rounded-[28px] lg:rounded-[40px] bg-white border border-slate-100 animate-pulse" />
+          <div className="lg:col-span-2 h-60 lg:h-72 rounded-[28px] lg:rounded-[40px] bg-white border border-slate-100 animate-pulse" />
         </div>
       </motion.div>
     );
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-10 max-w-5xl mx-auto space-y-8">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 sm:p-6 lg:p-10 max-w-5xl mx-auto space-y-6 lg:space-y-8">
       
       {/* HEADER CARD - BALANCE AREA COMPLETELY REMOVED */}
       <div
-        className="bg-white dark:bg-slate-900 rounded-[50px] p-12 flex flex-col md:flex-row justify-between items-center shadow-sm border border-slate-50 dark:border-slate-800 gap-8 transition-colors"
+        className="bg-white dark:bg-slate-900 rounded-[32px] lg:rounded-[50px] p-6 sm:p-8 lg:p-12 flex flex-col md:flex-row justify-between items-center shadow-sm border border-slate-50 dark:border-slate-800 gap-6 lg:gap-8 transition-colors"
         style={{
           backgroundImage: profile.profileBanner
             ? `linear-gradient(135deg, ${profile.accentColor}18, transparent 55%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.86))`
@@ -597,20 +599,24 @@ export default function Profile() {
           </div>
           
           <div className="text-center md:text-left">
-            <h1 className="text-5xl font-black text-slate-900 dark:text-white leading-tight">{profile.name}</h1>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white leading-tight break-words">{profile.name}</h1>
             <p className="text-sm font-semibold text-slate-400 mt-1">{profile.email}</p>
             {profile.profileBanner && (
               <p className="mt-3 text-sm font-semibold" style={{ color: profile.accentColor }}>
                 {profile.profileBanner}
               </p>
             )}
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-2 text-slate-400 font-bold">
-              <span className="flex items-center gap-1"><MapPin size={16}/> {profile.location}</span>
-              <span className="hidden md:block text-slate-200">|</span>
-              <span className="flex items-center gap-1 uppercase text-xs tracking-widest" style={{ color: profile.accentColor }}>
-                <Navigation size={16}/> {profile.radius}KM DISCOVERY
-              </span>
-            </div>
+            {(profile.location || profile.radius) && (
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-2 text-slate-400 font-bold">
+                {profile.location && <span className="flex items-center gap-1"><MapPin size={16}/> {profile.location}</span>}
+                {profile.location && profile.radius && <span className="hidden md:block text-slate-200">|</span>}
+                {profile.radius && (
+                  <span className="flex items-center gap-1 uppercase text-xs tracking-widest" style={{ color: profile.accentColor }}>
+                    <Navigation size={16}/> {profile.radius}KM DISCOVERY
+                  </span>
+                )}
+              </div>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <div className="text-[10px] font-black px-4 py-2 rounded-full inline-flex items-center gap-2 uppercase tracking-widest border" style={{ color: profile.accentColor, borderColor: `${profile.accentColor}44`, backgroundColor: `${profile.accentColor}12` }}>
                 <ShieldCheck size={14}/> {profile.premiumVerified ? profile.premiumBadgeText : 'Verified Member'}
@@ -636,7 +642,7 @@ export default function Profile() {
         {isOwnProfile && (
           <button 
             onClick={() => { setEditForm({...profile}); setIsEditModalOpen(true); }}
-            className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-10 py-5 rounded-2xl font-black hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 active:scale-95 border border-transparent dark:border-slate-700"
+            className="w-full md:w-auto bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-6 lg:px-10 py-4 lg:py-5 rounded-2xl font-black hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2 active:scale-95 border border-transparent dark:border-slate-700"
           >
             <Edit3 size={18} /> Edit Profile
           </button>
@@ -744,7 +750,7 @@ export default function Profile() {
       </div>
 
       {isOwnProfile && privateAnalytics && (
-        <section className="bg-white dark:bg-slate-900 rounded-[40px] p-8 border border-slate-50 dark:border-slate-800 shadow-sm">
+        <section className="bg-white dark:bg-slate-900 rounded-[28px] lg:rounded-[40px] p-5 sm:p-6 lg:p-8 border border-slate-50 dark:border-slate-800 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <BarChart3 className="text-cyan-600" size={22} />
             <div>
@@ -773,9 +779,9 @@ export default function Profile() {
         </section>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
         {/* SKILLS TAGS */}
-        <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-[40px] p-10 border border-slate-50 dark:border-slate-800 shadow-sm h-fit">
+        <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-[28px] lg:rounded-[40px] p-5 sm:p-6 lg:p-10 border border-slate-50 dark:border-slate-800 shadow-sm h-fit">
           <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6">Skill Tags</h3>
           <div className="flex flex-wrap gap-2">
             {profile.skills.map(skill => (
@@ -788,7 +794,7 @@ export default function Profile() {
 
         {/* PUBLIC LISTINGS */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-slate-900 rounded-[40px] p-10 border border-slate-50 dark:border-slate-800 shadow-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-[28px] lg:rounded-[40px] p-5 sm:p-6 lg:p-10 border border-slate-50 dark:border-slate-800 shadow-sm">
             <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 mb-8">
               <Package className="text-teal-600" /> {isOwnProfile ? 'My Listings' : `${profile.name}'s Listings`}
             </h3>
@@ -1077,33 +1083,6 @@ export default function Profile() {
                     className="w-full mt-2 p-5 bg-slate-50 dark:bg-slate-800 dark:text-white rounded-2xl outline-none ring-2 ring-transparent focus:ring-teal-500 font-bold transition-all resize-none"
                     placeholder="A short line that appears on your profile header"
                   />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Theme</label>
-                    <select
-                      value={editForm.profileTheme || 'ocean'}
-                      onChange={(e) => setEditForm({ ...editForm, profileTheme: e.target.value })}
-                      className="w-full mt-2 p-5 bg-slate-50 dark:bg-slate-800 dark:text-white rounded-2xl outline-none ring-2 ring-transparent focus:ring-teal-500 font-bold transition-all"
-                    >
-                      <option value="ocean">Ocean</option>
-                      <option value="sunset">Sunset</option>
-                      <option value="forest">Forest</option>
-                      <option value="midnight">Midnight</option>
-                      <option value="coral">Coral</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Accent Color</label>
-                    <input
-                      type="text"
-                      value={editForm.accentColor || '#14b8a6'}
-                      onChange={(e) => setEditForm({ ...editForm, accentColor: e.target.value })}
-                      className="w-full mt-2 p-5 bg-slate-50 dark:bg-slate-800 dark:text-white rounded-2xl outline-none ring-2 ring-transparent focus:ring-teal-500 font-bold transition-all"
-                      placeholder="#14b8a6"
-                    />
-                  </div>
                 </div>
 
                 <div>
