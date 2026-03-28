@@ -1,14 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, Compass, MessageSquare, 
-  Handshake, BarChart3, Bell, UserCircle, 
+import {
+  LayoutDashboard, Compass, MessageSquare,
+  Handshake, BarChart3, Bell, UserCircle,
   Settings, LogOut, History, Coins,
-  Users, ShieldCheck, UserCheck // Added UserCheck icon
+  Users, ShieldCheck, UserCheck
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import { logoutFromServer } from '../utils/authClient';
 import { subscribeUserEvents } from '../utils/liveEvents';
+
+function NotificationBadge({ count, className = '' }) {
+  if (!count || count <= 0) return null;
+  return (
+    <span className={`min-w-[22px] h-[22px] px-2 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center ${className}`}>
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -19,20 +28,14 @@ export default function Sidebar() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // 1. ADMIN TABS - Fixed Syntax & Icons
   const adminItems = [
-    { 
-      name: 'Admin Profile', 
-      icon: <UserCheck size={20}/>, // Use an icon here, not the Profile component
-      path: '/admin/profiles' // Fixed path: added leading slash and matched your page name
-    },
+    { name: 'Admin Profile', icon: <UserCheck size={20} />, path: '/admin/profiles' },
     { name: 'System Overview', icon: <LayoutDashboard size={20} />, path: '/admin' },
     { name: 'User Directory', icon: <Users size={20} />, path: '/admin/users' },
     { name: 'Moderation', icon: <ShieldCheck size={20} />, path: '/admin/mod' },
     { name: 'Treasury Ledger', icon: <BarChart3 size={20} />, path: '/analytics' },
   ];
 
-  // 2. USER TABS
   const userItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
     { name: 'Explore', icon: <Compass size={20} />, path: '/explore' },
@@ -46,6 +49,23 @@ export default function Sidebar() {
   ];
 
   const navItems = userRole === 'admin' ? adminItems : userItems;
+  const mobileTopItems = userRole === 'admin'
+    ? adminItems.slice(0, 4)
+    : [
+        { name: 'Messages', icon: <MessageSquare size={18} />, path: '/messages' },
+        { name: 'History', icon: <History size={18} />, path: '/history' },
+        { name: 'Notifications', icon: <Bell size={18} />, path: '/notifications' },
+        { name: 'Settings', icon: <Settings size={18} />, path: '/settings' }
+      ];
+  const mobileBottomItems = userRole === 'admin'
+    ? adminItems
+    : [
+        { name: 'My Listings', icon: <Handshake size={18} />, path: '/my-listings' },
+        { name: 'Explore', icon: <Compass size={18} />, path: '/explore' },
+        { name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/dashboard' },
+        { name: 'Token Ledger', icon: <Coins size={18} />, path: '/token-ledger' },
+        { name: 'Profile', icon: <UserCircle size={18} />, path: '/profile' }
+      ];
 
   useEffect(() => {
     if (userRole === 'admin' || !currentUsername) return;
@@ -77,7 +97,7 @@ export default function Sidebar() {
 
   const handleLogout = async () => {
     await logoutFromServer();
-    window.location.href = '/login'; 
+    window.location.href = '/login';
   };
 
   const handleNavClick = async (item) => {
@@ -99,65 +119,118 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-72 app-card border-r border-fuchsia-100/70 dark:border-indigo-300/20 h-screen p-8 flex flex-col transition-colors duration-500 sticky top-0 rounded-none">
-      
-      <div className="mb-12 px-2">
-        <div className="flex items-center gap-2">
-          <BrandLogo size={34} textClassName="text-2xl" />
-        </div>
-        {userRole === 'admin' && (
-          <div className="mt-1">
-            <span className="text-[9px] bg-fuchsia-50 text-fuchsia-600 px-2 py-0.5 rounded-md font-black uppercase tracking-wider border border-fuchsia-100">
-              Admin Mode
-            </span>
+    <>
+      <div className="hidden md:flex w-72 app-card border-r border-fuchsia-100/70 dark:border-indigo-300/20 h-screen p-8 flex-col transition-colors duration-500 sticky top-0 rounded-none">
+        <div className="mb-12 px-2">
+          <div className="flex items-center gap-2">
+            <BrandLogo size={34} textClassName="text-2xl" />
           </div>
-        )}
+          {userRole === 'admin' && (
+            <div className="mt-1">
+              <span className="text-[9px] bg-fuchsia-50 text-fuchsia-600 px-2 py-0.5 rounded-md font-black uppercase tracking-wider border border-fuchsia-100">
+                Admin Mode
+              </span>
+            </div>
+          )}
+        </div>
+
+        <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
+          {userRole === 'admin' && (
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-[2px] mb-4 ml-4">
+              Management Console
+            </p>
+          )}
+
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const badgeCount = item.path === '/messages' ? unreadCount : item.path === '/notifications' ? unreadNotifications : 0;
+            return (
+              <button
+                key={item.name}
+                onClick={() => handleNavClick(item)}
+                className={`w-full flex items-center gap-4 px-6 py-4 rounded-[22px] font-bold transition-all duration-300 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-300 bg-[length:180%_180%] animate-[shimmer-flow_5s_ease_infinite] text-white shadow-lg shadow-cyan-500/20 scale-[1.02]'
+                    : 'text-slate-500 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-cyan-600 dark:hover:text-cyan-300'
+                }`}
+              >
+                {item.icon}
+                <span className="text-sm tracking-tight">{item.name}</span>
+                <NotificationBadge count={badgeCount} className="ml-auto" />
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="w-full flex items-center gap-4 px-6 py-4 rounded-[22px] font-black text-slate-400 hover:bg-rose-50/70 hover:text-rose-500 transition-all duration-300"
+          >
+            <LogOut size={20} />
+            <span className="text-sm uppercase tracking-widest">Exit Session</span>
+          </button>
+        </div>
       </div>
 
-      <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
-        {userRole === 'admin' && (
-           <p className="text-[10px] text-slate-400 font-black uppercase tracking-[2px] mb-4 ml-4">
-             Management Console
-           </p>
-        )}
-        
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <button
-              key={item.name}
-              onClick={() => handleNavClick(item)}
-              className={`w-full flex items-center gap-4 px-6 py-4 rounded-[22px] font-bold transition-all duration-300 ${
-                isActive 
-                  ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-300 bg-[length:180%_180%] animate-[shimmer-flow_5s_ease_infinite] text-white shadow-lg shadow-cyan-500/20 scale-[1.02]' 
-                  : 'text-slate-500 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-cyan-600 dark:hover:text-cyan-300'
-              }`}
-            >
-              {item.icon}
-              <span className="text-sm tracking-tight">{item.name}</span>
-              {item.path === '/messages' && unreadCount > 0 && (
-                <span className="ml-auto min-w-[22px] h-[22px] px-2 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-              {item.path === '/notifications' && unreadNotifications > 0 && (
-                <span className="ml-auto min-w-[22px] h-[22px] px-2 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center">
-                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
+      <div className="md:hidden sticky top-0 z-40 px-3 pt-3 pb-1">
+        <div className="app-card rounded-[28px] px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <BrandLogo size={28} textClassName="text-lg" />
+            {userRole === 'admin' && (
+              <span className="text-[9px] bg-fuchsia-50 text-fuchsia-600 px-2 py-1 rounded-md font-black uppercase tracking-wider border border-fuchsia-100 shrink-0">
+                Admin
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {mobileTopItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              const badgeCount = item.path === '/messages' ? unreadCount : item.path === '/notifications' ? unreadNotifications : 0;
+              return (
+                <button
+                  key={`mobile-top-${item.name}`}
+                  onClick={() => handleNavClick(item)}
+                  aria-label={item.name}
+                  className={`relative h-11 w-11 shrink-0 rounded-2xl flex items-center justify-center transition-all ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-300 text-white shadow-lg shadow-cyan-500/20'
+                      : 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-200'
+                  }`}
+                >
+                  {item.icon}
+                  {badgeCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
-      <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">
-        <button
-          onClick={() => setShowLogoutModal(true)}
-          className="w-full flex items-center gap-4 px-6 py-4 rounded-[22px] font-black text-slate-400 hover:bg-rose-50/70 hover:text-rose-500 transition-all duration-300"
-        >
-          <LogOut size={20} />
-          <span className="text-sm uppercase tracking-widest">Exit Session</span>
-        </button>
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
+        <div className="app-card rounded-[28px] px-2 py-2 flex items-stretch justify-between gap-1 overflow-x-auto scrollbar-hide">
+          {mobileBottomItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <button
+                key={`tab-${item.name}`}
+                onClick={() => handleNavClick(item)}
+                className={`relative flex-1 min-w-0 px-2 py-2.5 rounded-[20px] flex flex-col items-center justify-center gap-1 transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-300 text-white shadow-lg shadow-cyan-500/20'
+                    : 'text-slate-500 dark:text-slate-300'
+                }`}
+              >
+                {item.icon}
+                <span className="text-[10px] font-black truncate max-w-full">{item.name}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {showLogoutModal && (
@@ -192,7 +265,6 @@ export default function Sidebar() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
-
