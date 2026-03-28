@@ -1921,6 +1921,8 @@ app.post('/api/auth/register', async (req, res) => {
     console.log(`👤 New user saved: ${username}`);
     res.status(201).json({
       message: "User saved successfully!",
+      username: newUser.username,
+      email: newUser.email || '',
       auth_method: 'email',
       onboarding_wtk_awarded: INSTALL_BONUS_WTK,
       next_profile_bonus_wtk: PROFILE_COMPLETION_BONUS_WTK,
@@ -2058,6 +2060,7 @@ app.post('/api/auth/login', async (req, res) => {
       message: "Login successful",
       role: user.role,
       username: user.username,
+      email: user.email || '',
       profile_image: user.profile_image || '',
       location: user.location || '',
       skills: Array.isArray(user.skills) ? user.skills : [],
@@ -2114,6 +2117,7 @@ app.post('/api/auth/verify-login-code', async (req, res) => {
       message: 'Verification successful',
       role: user.role,
       username: user.username,
+      email: user.email || '',
       profile_image: user.profile_image || '',
       location: user.location || '',
       skills: Array.isArray(user.skills) ? user.skills : [],
@@ -2418,6 +2422,7 @@ app.get('/api/auth/me', async (req, res) => {
     const referralCount = await getReferralCount(user.username);
     return res.json({
       username: user.username,
+      email: user.email || '',
       role: user.role,
       profile_image: user.profile_image || '',
       location: user.location || '',
@@ -5186,14 +5191,17 @@ app.post('/api/listings', async (req, res) => {
 
     await newListing.save();
 
-    const otherUsers = await User.find({ username: { $ne: owner_username } }).select('username').lean();
-    if (otherUsers.length > 0) {
-      const notifications = otherUsers.map((u) => ({
+    const allUsers = await User.find().select('username').lean();
+    if (allUsers.length > 0) {
+      const notifications = allUsers.map((u) => ({
         recipient_username: u.username,
         actor_username: owner_username,
         type: 'listing',
-        title: 'New Listing Posted',
-        message: `${owner_username} posted "${title}" for ${Number(wtk)} WTK.`,
+        title: u.username === owner_username ? 'Listing Published' : 'New Listing Posted',
+        message:
+          u.username === owner_username
+            ? `Your listing "${title}" is now live for ${Number(wtk)} WTK.`
+            : `${owner_username} posted "${title}" for ${Number(wtk)} WTK.`,
         meta: {
           listing_id: String(newListing._id),
           listing_title: title,
@@ -5202,15 +5210,19 @@ app.post('/api/listings', async (req, res) => {
         read: false
       }));
       await Notification.insertMany(notifications);
-      otherUsers.forEach((u) => invalidateRealtimeCachesForUser(u.username));
-      pushEventToMany(otherUsers.map((u) => u.username), 'notification_update', {
+      allUsers.forEach((u) => invalidateRealtimeCachesForUser(u.username));
+      pushEventToMany(allUsers.map((u) => u.username), 'notification_update', {
         reason: 'new_listing',
         actor_username: owner_username
       });
     }
 
     invalidateCachePrefix('listings:');
-    pushEvent(owner_username, 'listing_update', { reason: 'created' });
+    pushEventToMany(allUsers.map((u) => u.username), 'listing_update', {
+      reason: 'created',
+      actor_username: owner_username,
+      listing_id: String(newListing._id)
+    });
 
     return res.status(201).json({ message: "Listing created", listing: newListing });
   } catch (err) {

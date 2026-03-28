@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -6,6 +6,7 @@ import {
   User, Navigation, Coins, Mail, Share2, ArrowUpRight, Crown
 } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
+import { subscribeUserEvents } from '../utils/liveEvents';
 
 const TABS = ['All', 'Users', 'Products', 'Skills', 'Area'];
 const HISTORY_KEY = 'wertech_explore_search_history_v1';
@@ -106,85 +107,96 @@ export default function Explore() {
     }
   });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [usersRes, listingsRes] = await Promise.all([
-          fetch('/api/users'),
-          fetch('/api/listings')
-        ]);
-        const [usersData, listingsData] = await Promise.all([usersRes.json(), listingsRes.json()]);
+  const loadData = useCallback(async () => {
+    try {
+      const [usersRes, listingsRes] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/listings')
+      ]);
+      const [usersData, listingsData] = await Promise.all([usersRes.json(), listingsRes.json()]);
 
-        if (usersRes.ok && Array.isArray(usersData)) {
-          const mappedUsers = usersData.map((u) => ({
-            id: u._id || u.username,
-            username: u.username,
-            email: u.email,
-            location: u.location || 'Unknown',
-            locationLat: toNumberOrNull(u.location_lat),
-            locationLng: toNumberOrNull(u.location_lng),
-            status: u.status || 'Verified',
-            profileImage: u.profile_image || '',
-            radius: Number(u.radius || 0),
-            skills: Array.isArray(u.skills) ? u.skills : [],
-            premiumVerified: !!u.premium_verified,
-            profileBoostActive: !!u.profile_boost_active,
-            premiumTier: u.premium_tier || 'free'
-          }));
-          setUsers(mappedUsers);
-          if (listingsRes.ok && Array.isArray(listingsData)) {
-            const byUsername = new Map(mappedUsers.map((u) => [u.username, u]));
-            const mappedListings = listingsData.map((item) => {
-              const ownerProfile = byUsername.get(item.owner_username);
-              return {
-                id: item._id,
-                title: item.title,
-                category: item.type === 'skill' ? 'Skill' : 'Product',
-                wtk: Number(item.wtk || 0),
-                dist: Number(ownerProfile?.radius || 0),
-                locationLat: ownerProfile?.locationLat ?? null,
-                locationLng: ownerProfile?.locationLng ?? null,
-                user: item.owner_username,
-                image: item.image || '',
-                desc: item.description || '',
-                location: item.location || '',
-                date: item.date || '',
-                boosted: !!item.boosted,
-                premiumVerified: !!item.premium_verified,
-                ownerBoosted: !!item.owner_profile_boosted
-              };
-            });
-            setListings(mappedListings);
-          }
-        } else if (listingsRes.ok && Array.isArray(listingsData)) {
-          const mappedListings = listingsData.map((item) => ({
-            id: item._id,
-            title: item.title,
-            category: item.type === 'skill' ? 'Skill' : 'Product',
-            wtk: Number(item.wtk || 0),
-            dist: 0,
-            user: item.owner_username,
-            image: item.image || '',
-            desc: item.description || '',
-            location: item.location || '',
-            date: item.date || '',
-            boosted: !!item.boosted,
-            premiumVerified: !!item.premium_verified,
-            ownerBoosted: !!item.owner_profile_boosted
-          }));
+      if (usersRes.ok && Array.isArray(usersData)) {
+        const mappedUsers = usersData.map((u) => ({
+          id: u._id || u.username,
+          username: u.username,
+          email: u.email,
+          location: u.location || 'Unknown',
+          locationLat: toNumberOrNull(u.location_lat),
+          locationLng: toNumberOrNull(u.location_lng),
+          status: u.status || 'Verified',
+          profileImage: u.profile_image || '',
+          radius: Number(u.radius || 0),
+          skills: Array.isArray(u.skills) ? u.skills : [],
+          premiumVerified: !!u.premium_verified,
+          profileBoostActive: !!u.profile_boost_active,
+          premiumTier: u.premium_tier || 'free'
+        }));
+        setUsers(mappedUsers);
+        if (listingsRes.ok && Array.isArray(listingsData)) {
+          const byUsername = new Map(mappedUsers.map((u) => [u.username, u]));
+          const mappedListings = listingsData.map((item) => {
+            const ownerProfile = byUsername.get(item.owner_username);
+            return {
+              id: item._id,
+              title: item.title,
+              category: item.type === 'skill' ? 'Skill' : 'Product',
+              wtk: Number(item.wtk || 0),
+              dist: Number(ownerProfile?.radius || 0),
+              locationLat: ownerProfile?.locationLat ?? null,
+              locationLng: ownerProfile?.locationLng ?? null,
+              user: item.owner_username,
+              image: item.image || '',
+              desc: item.description || '',
+              location: item.location || '',
+              date: item.date || '',
+              boosted: !!item.boosted,
+              premiumVerified: !!item.premium_verified,
+              ownerBoosted: !!item.owner_profile_boosted
+            };
+          });
           setListings(mappedListings);
         }
-      } catch (err) {
-        // no-op
-      } finally {
-        setInitialLoading(false);
+      } else if (listingsRes.ok && Array.isArray(listingsData)) {
+        const mappedListings = listingsData.map((item) => ({
+          id: item._id,
+          title: item.title,
+          category: item.type === 'skill' ? 'Skill' : 'Product',
+          wtk: Number(item.wtk || 0),
+          dist: 0,
+          user: item.owner_username,
+          image: item.image || '',
+          desc: item.description || '',
+          location: item.location || '',
+          date: item.date || '',
+          boosted: !!item.boosted,
+          premiumVerified: !!item.premium_verified,
+          ownerBoosted: !!item.owner_profile_boosted
+        }));
+        setListings(mappedListings);
       }
-    };
+    } catch (err) {
+      // no-op
+    } finally {
+      setInitialLoading(false);
+    }
+  }, []);
 
+  useEffect(() => {
     loadData();
     const timer = setInterval(loadData, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [loadData]);
+
+  useEffect(() => {
+    if (!currentUsername) return () => {};
+    return subscribeUserEvents(currentUsername, {
+      onEvent: (type) => {
+        if (type === 'listing_update' || type === 'notification_update') {
+          loadData();
+        }
+      }
+    });
+  }, [currentUsername, loadData]);
 
   useEffect(() => {
     try {

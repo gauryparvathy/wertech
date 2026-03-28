@@ -145,6 +145,7 @@ export function clearAuthSession() {
   localStorage.removeItem('userRole');
   localStorage.removeItem('isAuthenticated');
   localStorage.removeItem('username');
+  localStorage.removeItem('userEmail');
   localStorage.removeItem('userBalance');
   localStorage.removeItem('hasSubscribed');
 }
@@ -154,6 +155,7 @@ export function setAuthSession(payload = {}) {
   if (payload.refresh_token) localStorage.setItem('refreshToken', String(payload.refresh_token));
   if (payload.role) localStorage.setItem('userRole', String(payload.role));
   if (payload.username) localStorage.setItem('username', String(payload.username));
+  if (payload.email !== undefined) localStorage.setItem('userEmail', String(payload.email || ''));
   if (payload.wtk_balance !== undefined) localStorage.setItem('userBalance', String(payload.wtk_balance || 0));
   if (payload.has_subscribed !== undefined) localStorage.setItem('hasSubscribed', String(!!payload.has_subscribed));
   localStorage.setItem('isAuthenticated', 'true');
