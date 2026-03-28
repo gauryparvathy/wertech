@@ -1949,6 +1949,13 @@ app.post('/api/auth/register', async (req, res) => {
       referrer_rewarded_install: referrerRewarded
     });
   } catch (err) {
+    logStructured('error', 'register_failed', {
+      message: err?.message || 'Registration failed',
+      code: err?.code || null,
+      keyPattern: err?.keyPattern || null,
+      keyValue: err?.keyValue || null,
+      stack: err?.stack ? String(err.stack) : undefined
+    });
     const duplicateField = Object.keys(err?.keyPattern || {})[0] || '';
     if (err?.code === 11000) {
       if (duplicateField === 'email') {
